@@ -2,22 +2,13 @@ import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../utils/cn';
 
-interface DialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-  className?: string;
-}
-
-export const Dialog: React.FC<DialogProps> = ({ 
+export const Dialog = ({ 
   isOpen, 
   onClose, 
   title, 
   children,
   className 
 }) => {
-  // Prevent background scroll when modal is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';

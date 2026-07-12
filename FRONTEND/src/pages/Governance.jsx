@@ -6,14 +6,14 @@ import {
   usePolicies, useCreatePolicy, useAcknowledgePolicy,
   useAudits, useCreateAudit, 
   useComplianceIssues, useCreateComplianceIssue, useUpdateComplianceIssueStatus,
-  useDepartments, useEmployees
+  useDepartments
 } from '../api/queries';
 import { useAuth } from '../hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/Card';
 import { Dialog } from '../components/Dialog';
 import { db } from '../api/client';
 
-export const Governance: React.FC = () => {
+export const Governance = () => {
   const { user, isAdmin, isDeptHead } = useAuth();
 
   // Queries
@@ -45,7 +45,7 @@ export const Governance: React.FC = () => {
 
   // Form State - Compliance Issue
   const [issAuditId, setIssAuditId] = useState('');
-  const [issSeverity, setIssSeverity] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'>('MEDIUM');
+  const [issSeverity, setIssSeverity] = useState('MEDIUM');
   const [issDesc, setIssDesc] = useState('');
   const [issOwnerId, setIssOwnerId] = useState('');
   const [issDueDate, setIssDueDate] = useState('');
@@ -55,7 +55,7 @@ export const Governance: React.FC = () => {
   const openIssues = issues.filter(i => i.status === 'OPEN' || i.status === 'IN_PROGRESS');
   const criticalIssues = issues.filter(i => i.severity === 'CRITICAL' && i.status !== 'RESOLVED');
 
-  const handleCreatePolicy = (e: React.FormEvent) => {
+  const handleCreatePolicy = (e) => {
     e.preventDefault();
     if (!polTitle || !polContent) return;
 
@@ -72,7 +72,7 @@ export const Governance: React.FC = () => {
     });
   };
 
-  const handleCreateAudit = (e: React.FormEvent) => {
+  const handleCreateAudit = (e) => {
     e.preventDefault();
     if (!audDeptId || !audDate || !auditor) return;
 
@@ -90,7 +90,7 @@ export const Governance: React.FC = () => {
     });
   };
 
-  const handleCreateIssue = (e: React.FormEvent) => {
+  const handleCreateIssue = (e) => {
     e.preventDefault();
     if (!issAuditId || !issDesc || !issOwnerId || !issDueDate) return;
 
@@ -488,7 +488,7 @@ export const Governance: React.FC = () => {
             <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Infraction Severity</label>
             <select 
               value={issSeverity}
-              onChange={(e) => setIssSeverity(e.target.value as any)}
+              onChange={(e) => setIssSeverity(e.target.value)}
               className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               required
             >
@@ -521,7 +521,7 @@ export const Governance: React.FC = () => {
             >
               <option value="">Select Owner...</option>
               {db.employees.map(emp => (
-                <option key={emp.id} value={emp.id}>{emp.name} ({emp.role.replace('_', ' ')})</option>
+                <option key={emp.id} value={emp.id}>{emp.name}</option>
               ))}
             </select>
           </div>
@@ -558,3 +558,4 @@ export const Governance: React.FC = () => {
     </div>
   );
 };
+export default Governance;

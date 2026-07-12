@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Plus, Leaf, Trash2, ArrowUpRight, BarChart3, AlertTriangle, HelpCircle, CheckCircle
+  Plus, Leaf, ArrowUpRight, BarChart3
 } from 'lucide-react';
 import { 
   useCarbonTransactions, useCreateCarbonTransaction, 
@@ -14,7 +14,7 @@ import {
   ResponsiveContainer, Legend 
 } from 'recharts';
 
-export const Environmental: React.FC = () => {
+export const Environmental = () => {
   const { user, isAdmin, isDeptHead } = useAuth();
   
   // Queries
@@ -28,7 +28,7 @@ export const Environmental: React.FC = () => {
 
   // Component State
   const [modalOpen, setModalOpen] = useState(false);
-  const [sourceType, setSourceType] = useState<'Purchase' | 'Manufacturing' | 'Expense' | 'Fleet'>('Purchase');
+  const [sourceType, setSourceType] = useState('Purchase');
   const [sourceId, setSourceId] = useState('');
   const [selectedFactorId, setSelectedFactorId] = useState('');
   const [deptId, setDeptId] = useState(user?.departmentId || '');
@@ -44,7 +44,7 @@ export const Environmental: React.FC = () => {
     source: tx.sourceType,
   }));
 
-  const handleCreateTx = (e: React.FormEvent) => {
+  const handleCreateTx = (e) => {
     e.preventDefault();
     if (!selectedFactorId || !sourceId || !deptId) return;
 
@@ -214,7 +214,7 @@ export const Environmental: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full text-left text-xs border-collapse text-foreground" summary="Carbon transactions logs and emissions equivalents">
               <thead>
                 <tr className="border-b border-border/80 text-muted-foreground">
                   <th className="py-3 px-4 font-semibold uppercase tracking-wider">Source Code</th>
@@ -239,7 +239,7 @@ export const Environmental: React.FC = () => {
                         {tx.sourceType}
                       </span>
                     </td>
-                    <td className="py-3 px-4 font-medium text-foreground">{tx.department?.name || 'Loading...'}</td>
+                    <td className="py-3 px-4 font-medium">{tx.department?.name || 'Loading...'}</td>
                     <td className="py-3 px-4 text-muted-foreground">{tx.emissionFactor?.activity || 'Unknown'}</td>
                     <td className="py-3 px-4 font-bold text-esg-env">{tx.co2Amount} kg CO2e</td>
                     <td className="py-3 px-4 text-muted-foreground">{new Date(tx.date).toLocaleDateString()}</td>
@@ -262,7 +262,7 @@ export const Environmental: React.FC = () => {
             <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Source Activity Category</label>
             <select 
               value={sourceType}
-              onChange={(e) => setSourceType(e.target.value as any)}
+              onChange={(e) => setSourceType(e.target.value)}
               className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="Purchase">Purchase Log (Materials/Hardware)</option>
@@ -334,3 +334,4 @@ export const Environmental: React.FC = () => {
     </div>
   );
 };
+export default Environmental;

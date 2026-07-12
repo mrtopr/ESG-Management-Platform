@@ -2,18 +2,13 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   Leaf, Users, ShieldCheck, Award, FileSpreadsheet, Settings, 
-  ChevronLeft, ChevronRight, HelpCircle, User
+  ChevronLeft, ChevronRight, HelpCircle, User, LogOut
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../utils/cn';
 
-interface SidebarProps {
-  collapsed: boolean;
-  setCollapsed: (val: boolean) => void;
-}
-
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
-  const { user } = useAuth();
+export const Sidebar = ({ collapsed, setCollapsed }) => {
+  const { user, logout } = useAuth();
 
   const navItems = [
     { name: 'Environmental', path: '/environmental', icon: Leaf, color: 'text-esg-env' },
@@ -78,15 +73,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
       {/* User Session Info / Footer */}
       <div className="p-4 border-t border-border/50 bg-muted/30">
         {collapsed ? (
-          <div className="flex justify-center group relative cursor-pointer">
-            <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
-              <User className="w-5 h-5 text-primary" />
+          <div className="flex flex-col items-center space-y-3">
+            <div className="flex justify-center group relative cursor-pointer">
+              <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
+                <User className="w-5 h-5 text-primary" />
+              </div>
+              {/* Tooltip */}
+              <div className="absolute left-16 bottom-4 ml-2 bg-popover border border-border text-popover-foreground text-xs rounded px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                <p className="font-bold">{user?.name}</p>
+                <p className="text-muted-foreground text-[10px]">{user?.role}</p>
+              </div>
             </div>
-            {/* Tooltip */}
-            <div className="absolute left-16 bottom-4 ml-2 bg-popover border border-border text-popover-foreground text-xs rounded px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-              <p className="font-bold">{user?.name}</p>
-              <p className="text-muted-foreground text-[10px]">{user?.role}</p>
-            </div>
+            
+            <button 
+              onClick={() => logout()}
+              title="Sign Out"
+              className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/30 transition-all duration-200"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         ) : (
           <div className="space-y-3">
@@ -115,6 +120,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
                 Level {Math.floor((user?.xp || 0) / 500) + 1}
               </p>
             </div>
+            
+            {/* Logout Option */}
+            <button 
+              onClick={() => logout()}
+              className="w-full flex items-center justify-center space-x-2 py-2 mt-2 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/30 transition-all duration-200"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
+            </button>
           </div>
         )}
         

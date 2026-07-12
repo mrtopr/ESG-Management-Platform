@@ -11,7 +11,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/Card';
 import { db } from '../api/client';
 
-export const SettingsPage: React.FC = () => {
+export const SettingsPage = () => {
   const { isAdmin } = useAuth();
 
   // Queries
@@ -24,10 +24,10 @@ export const SettingsPage: React.FC = () => {
   const createDept = useCreateDepartment();
   const createCat = useCreateCategory();
 
-  // Config weights local state (since we want smooth sliders before committing)
-  const [envWeight, setEnvWeight] = useState<number>(config?.envWeight ? Math.round(config.envWeight * 100) : 40);
-  const [socialWeight, setSocialWeight] = useState<number>(config?.socialWeight ? Math.round(config.socialWeight * 100) : 30);
-  const [govWeight, setGovWeight] = useState<number>(config?.govWeight ? Math.round(config.govWeight * 100) : 30);
+  // Config weights local state
+  const [envWeight, setEnvWeight] = useState(config?.envWeight ? Math.round(config.envWeight * 100) : 40);
+  const [socialWeight, setSocialWeight] = useState(config?.socialWeight ? Math.round(config.socialWeight * 100) : 30);
+  const [govWeight, setGovWeight] = useState(config?.govWeight ? Math.round(config.govWeight * 100) : 30);
 
   // Form State - Department
   const [deptName, setDeptName] = useState('');
@@ -35,7 +35,7 @@ export const SettingsPage: React.FC = () => {
 
   // Form State - Category
   const [catName, setCatName] = useState('');
-  const [catType, setCatType] = useState<'CSR_ACTIVITY' | 'CHALLENGE'>('CSR_ACTIVITY');
+  const [catType, setCatType] = useState('CSR_ACTIVITY');
 
   // Success Indicators
   const [successToast, setSuccessToast] = useState('');
@@ -66,7 +66,7 @@ export const SettingsPage: React.FC = () => {
     });
   };
 
-  const handleToggle = (key: 'autoEmissionCalc' | 'evidenceRequired' | 'badgeAutoAward', val: boolean) => {
+  const handleToggle = (key, val) => {
     updateConfig.mutate({
       [key]: val
     }, {
@@ -76,7 +76,7 @@ export const SettingsPage: React.FC = () => {
     });
   };
 
-  const handleCreateDept = (e: React.FormEvent) => {
+  const handleCreateDept = (e) => {
     e.preventDefault();
     if (!deptName || !deptCode) return;
 
@@ -93,7 +93,7 @@ export const SettingsPage: React.FC = () => {
     });
   };
 
-  const handleCreateCat = (e: React.FormEvent) => {
+  const handleCreateCat = (e) => {
     e.preventDefault();
     if (!catName) return;
 
@@ -109,7 +109,7 @@ export const SettingsPage: React.FC = () => {
     });
   };
 
-  const triggerToast = (msg: string) => {
+  const triggerToast = (msg) => {
     setSuccessToast(msg);
     setTimeout(() => setSuccessToast(''), 3000);
   };
@@ -281,7 +281,7 @@ export const SettingsPage: React.FC = () => {
 
         {/* Right Side: Departments & Categories Registry */}
         <div className="space-y-6">
-          {/* Department management registry */}
+          {/* Department Directory */}
           <Card className="bg-card/30">
             <CardHeader>
               <CardTitle className="text-lg flex items-center">
@@ -333,7 +333,7 @@ export const SettingsPage: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Categories directory */}
+          {/* Categories configuration */}
           <Card className="bg-card/30">
             <CardHeader>
               <CardTitle className="text-lg flex items-center">
@@ -355,7 +355,7 @@ export const SettingsPage: React.FC = () => {
                   />
                   <select
                     value={catType}
-                    onChange={(e) => setCatType(e.target.value as any)}
+                    onChange={(e) => setCatType(e.target.value)}
                     className="bg-muted border border-border rounded-xl px-3 py-1.5 text-xs text-foreground focus:ring-0"
                   >
                     <option value="CSR_ACTIVITY">Social CSR</option>
