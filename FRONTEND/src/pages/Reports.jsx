@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { 
-  FileText, Download, Filter, RefreshCw, BarChart2, CheckCircle, 
+  FileText, Filter, RefreshCw, BarChart2, CheckCircle, 
   FileSpreadsheet, Table, FileArchive, Eye
 } from 'lucide-react';
 import { useCarbonTransactions, useCSRActivities, useComplianceIssues, useDepartments } from '../api/queries';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/Card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../components/Card';
 import { db } from '../api/client';
 
-export const Reports: React.FC = () => {
+export const Reports = () => {
   // Queries
   const { data: depts = [] } = useDepartments();
   const { data: transactions = [] } = useCarbonTransactions();
@@ -24,11 +24,11 @@ export const Reports: React.FC = () => {
 
   // Exporters State
   const [generating, setGenerating] = useState(false);
-  const [exportType, setExportType] = useState<'pdf' | 'excel' | 'csv' | null>(null);
+  const [exportType, setExportType] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const [successToast, setSuccessToast] = useState('');
 
-  // Computations: Aggregations based on filters
+  // Computations
   const filteredTxs = transactions.filter(tx => {
     const deptMatch = !selectedDeptId || tx.departmentId === selectedDeptId;
     const date = new Date(tx.date).toISOString().split('T')[0];
@@ -42,6 +42,12 @@ export const Reports: React.FC = () => {
     return deptMatch && dateMatch;
   });
 
+  function auditsWithDept(auditId) {
+    if (!selectedDeptId) return true;
+    const audit = db.audits.find(a => a.id === auditId);
+    return audit?.departmentId === selectedDeptId;
+  }
+
   const filteredIssues = issues.filter(iss => {
     const auditMatch = auditsWithDept(iss.auditId);
     const date = new Date(iss.createdAt).toISOString().split('T')[0];
@@ -49,19 +55,13 @@ export const Reports: React.FC = () => {
     return auditMatch && dateMatch;
   });
 
-  function auditsWithDept(auditId: string) {
-    if (!selectedDeptId) return true;
-    const audit = db.audits.find(a => a.id === auditId);
-    return audit?.departmentId === selectedDeptId;
-  }
-
   // Aggregate stats
   const totalCo2 = filteredTxs.reduce((sum, tx) => sum + tx.co2Amount, 0);
   const totalCsrCount = filteredCsrs.length;
   const totalIssuesCount = filteredIssues.length;
   const resolvedIssues = filteredIssues.filter(i => i.status === 'RESOLVED').length;
 
-  const handleGenerateReport = (e: React.FormEvent) => {
+  const handleGenerateReport = (e) => {
     e.preventDefault();
     setGenerating(true);
     setTimeout(() => {
@@ -70,7 +70,7 @@ export const Reports: React.FC = () => {
     }, 800);
   };
 
-  const handleExport = (type: 'pdf' | 'excel' | 'csv') => {
+  const handleExport = (type) => {
     setExportType(type);
     setTimeout(() => {
       setExportType(null);
@@ -310,3 +310,4 @@ export const Reports: React.FC = () => {
     </div>
   );
 };
+export default Reports;
