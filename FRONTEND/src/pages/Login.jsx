@@ -14,7 +14,7 @@ export const Login = () => {
   
   // Login fields
   const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('password123');
+  const [loginPassword, setLoginPassword] = useState('pass123');
 
   // Register fields
   const [regName, setRegName] = useState('');
@@ -27,7 +27,7 @@ export const Login = () => {
     e.preventDefault();
     if (!loginEmail) return;
 
-    login({ email: loginEmail }, {
+    login({ email: loginEmail, password: loginPassword }, {
       onSuccess: () => {
         toast(`Signed in successfully as ${loginEmail}`, 'success');
       },

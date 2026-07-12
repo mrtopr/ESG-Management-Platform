@@ -14,8 +14,8 @@ export const useAuth = () => {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async ({ email }) => {
-      return mockHandlers.login(email);
+    mutationFn: async ({ email, password }) => {
+      return mockHandlers.login(email, password);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });

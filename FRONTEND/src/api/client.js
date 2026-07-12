@@ -288,24 +288,48 @@ const checkBadgeUnlocks = (employeeId) => {
   });
 };
 
-// Simple mock handler structure to map API calls
+// Request Interceptor to send JWT token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('ecosphere_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Simple mock handler structure mapped to backend REST API or fallback to localStorage
 export const mockHandlers = {
   // Auth
-  login: async (email) => {
-    await latency();
-    const user = db.employees.find(e => e.email === email);
-    if (!user) throw new Error('Invalid email or password');
-    setSessionUser(user.id);
-    return { token: 'mock-jwt-token', user };
+  login: async (email, password = 'pass123') => {
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      const { token, employee } = res.data.data;
+      localStorage.setItem('ecosphere_token', token);
+      setSessionUser(employee.id);
+      return { token, user: employee };
+    } catch (err) {
+      console.warn("Login endpoint failed, using mock auth", err);
+      await latency();
+      const user = db.employees.find(e => e.email === email);
+      if (!user) throw new Error('Invalid email or password');
+      setSessionUser(user.id);
+      return { token: 'mock-jwt-token', user };
+    }
   },
 
   getCurrentUser: async () => {
-    await latency();
-    const user = getSessionUser();
-    const pts = db.pointsTransactions
-      .filter(tx => tx.employeeId === user.id)
-      .reduce((sum, tx) => sum + tx.amount, 0);
-    return { ...user, points: pts };
+    try {
+      const res = await api.get('/auth/me');
+      return res.data.data;
+    } catch (err) {
+      console.warn("getCurrentUser endpoint failed, using mock profile", err);
+      await latency();
+      const user = getSessionUser();
+      const pts = db.pointsTransactions
+        .filter(tx => tx.employeeId === user.id)
+        .reduce((sum, tx) => sum + tx.amount, 0);
+      return { ...user, points: pts };
+    }
   },
 
   // Environmental
@@ -324,46 +348,58 @@ export const mockHandlers = {
   },
 
   getCarbonTransactions: async () => {
-    await latency();
-    const txs = db.carbonTransactions;
-    const depts = db.departments;
-    const factors = db.emissionFactors;
-    return txs.map(tx => ({
-      ...tx,
-      department: depts.find(d => d.id === tx.departmentId),
-      emissionFactor: factors.find(ef => ef.id === tx.emissionFactorId),
-    }));
+    try {
+      const res = await api.get('/environmental/carbon');
+      return res.data.data;
+    } catch (err) {
+      console.warn("getCarbonTransactions endpoint failed, using mock", err);
+      await latency();
+      const txs = db.carbonTransactions;
+      const depts = db.departments;
+      const factors = db.emissionFactors;
+      return txs.map(tx => ({
+        ...tx,
+        department: depts.find(d => d.id === tx.departmentId),
+        emissionFactor: factors.find(ef => ef.id === tx.emissionFactorId),
+      }));
+    }
   },
 
   createCarbonTransaction: async (data) => {
-    await latency();
-    const factors = db.emissionFactors;
-    const factor = factors.find(ef => ef.id === data.emissionFactorId);
-    if (!factor) throw new Error('Emission factor not found');
+    try {
+      const res = await api.post('/environmental/carbon', data);
+      return res.data.data;
+    } catch (err) {
+      console.warn("createCarbonTransaction endpoint failed, using mock", err);
+      await latency();
+      const factors = db.emissionFactors;
+      const factor = factors.find(ef => ef.id === data.emissionFactorId);
+      if (!factor) throw new Error('Emission factor not found');
 
-    const quantity = 500; 
-    const calculatedCo2 = quantity * factor.factorValue;
+      const quantity = 500; 
+      const calculatedCo2 = quantity * factor.factorValue;
 
-    const txs = db.carbonTransactions;
-    const newTx = {
-      ...data,
-      id: `ctx-${Date.now()}`,
-      co2Amount: Math.round(calculatedCo2 * 100) / 100,
-      date: new Date().toISOString()
-    };
-    txs.push(newTx);
-    db.carbonTransactions = txs;
+      const txs = db.carbonTransactions;
+      const newTx = {
+        ...data,
+        id: `ctx-${Date.now()}`,
+        co2Amount: Math.round(calculatedCo2 * 100) / 100,
+        date: new Date().toISOString()
+      };
+      txs.push(newTx);
+      db.carbonTransactions = txs;
 
-    if (db.config.autoEmissionCalc) {
-      const goals = db.goals;
-      const primaryGoalIdx = goals.findIndex(g => g.id === 'goal-1');
-      if (primaryGoalIdx !== -1) {
-        goals[primaryGoalIdx].currentValue += Math.round(calculatedCo2 * 100) / 100;
-        db.goals = goals;
+      if (db.config.autoEmissionCalc) {
+        const goals = db.goals;
+        const primaryGoalIdx = goals.findIndex(g => g.id === 'goal-1');
+        if (primaryGoalIdx !== -1) {
+          goals[primaryGoalIdx].currentValue += Math.round(calculatedCo2 * 100) / 100;
+          db.goals = goals;
+        }
       }
-    }
 
-    return newTx;
+      return newTx;
+    }
   },
 
   getGoals: async () => {
@@ -437,19 +473,25 @@ export const mockHandlers = {
   },
 
   approveParticipation: async (id) => {
-    await latency();
-    const prts = db.participations;
-    const idx = prts.findIndex(p => p.id === id);
-    if (idx === -1) throw new Error('Participation not found');
+    try {
+      const res = await api.post(`/social/participations/${id}/approve`);
+      return res.data.data;
+    } catch (err) {
+      console.warn("approveParticipation failed, using mock", err);
+      await latency();
+      const prts = db.participations;
+      const idx = prts.findIndex(p => p.id === id);
+      if (idx === -1) throw new Error('Participation not found');
 
-    prts[idx].approvalStatus = 'APPROVED';
-    prts[idx].completionDate = new Date().toISOString();
-    db.participations = prts;
+      prts[idx].approvalStatus = 'APPROVED';
+      prts[idx].completionDate = new Date().toISOString();
+      db.participations = prts;
 
-    const p = prts[idx];
-    addXPAndPoints(p.employeeId, p.pointsEarned, 'CSR', p.id);
+      const p = prts[idx];
+      addXPAndPoints(p.employeeId, p.pointsEarned, 'CSR', p.id);
 
-    return prts[idx];
+      return prts[idx];
+    }
   },
 
   rejectParticipation: async (id) => {
@@ -465,22 +507,34 @@ export const mockHandlers = {
 
   // Governance
   getPolicies: async () => {
-    await latency();
-    const pols = db.policies;
-    const acks = db.policyAcknowledgements;
-    return pols.map(p => ({
-      ...p,
-      acknowledgements: acks.filter(a => a.policyId === p.id)
-    }));
+    try {
+      const res = await api.get('/governance/policies');
+      return res.data.data;
+    } catch (err) {
+      console.warn("getPolicies failed, using mock", err);
+      await latency();
+      const pols = db.policies;
+      const acks = db.policyAcknowledgements;
+      return pols.map(p => ({
+        ...p,
+        acknowledgements: acks.filter(a => a.policyId === p.id)
+      }));
+    }
   },
 
   createPolicy: async (data) => {
-    await latency();
-    const pols = db.policies;
-    const newPol = { ...data, id: `pol-${Date.now()}` };
-    pols.push(newPol);
-    db.policies = pols;
-    return newPol;
+    try {
+      const res = await api.post('/governance/policies', data);
+      return res.data.data;
+    } catch (err) {
+      console.warn("createPolicy failed, using mock", err);
+      await latency();
+      const pols = db.policies;
+      const newPol = { ...data, id: `pol-${Date.now()}` };
+      pols.push(newPol);
+      db.policies = pols;
+      return newPol;
+    }
   },
 
   acknowledgePolicy: async (id) => {
@@ -564,204 +618,282 @@ export const mockHandlers = {
 
   // Gamification
   getChallenges: async () => {
-    await latency();
-    const chs = db.challenges;
-    const cats = db.categories;
-    return chs.map(ch => ({
-      ...ch,
-      category: cats.find(c => c.id === ch.categoryId)
-    }));
+    try {
+      const res = await api.get('/gamification/challenges');
+      return res.data.data;
+    } catch (err) {
+      console.warn("getChallenges failed, using mock", err);
+      await latency();
+      const chs = db.challenges;
+      const cats = db.categories;
+      return chs.map(ch => ({
+        ...ch,
+        category: cats.find(c => c.id === ch.categoryId)
+      }));
+    }
   },
 
   createChallenge: async (data) => {
-    await latency();
-    const chs = db.challenges;
-    const newCh = { ...data, id: `chg-${Date.now()}` };
-    chs.push(newCh);
-    db.challenges = chs;
-    return newCh;
+    try {
+      const res = await api.post('/gamification/challenges', data);
+      return res.data.data;
+    } catch (err) {
+      console.warn("createChallenge failed, using mock", err);
+      await latency();
+      const chs = db.challenges;
+      const newCh = { ...data, id: `chg-${Date.now()}` };
+      chs.push(newCh);
+      db.challenges = chs;
+      return newCh;
+    }
   },
 
   getChallengeParticipations: async () => {
-    await latency();
-    const prts = db.challengeParticipations;
-    const chs = db.challenges;
-    const emps = db.employees;
-    return prts.map(p => ({
-      ...p,
-      challenge: chs.find(c => c.id === p.challengeId),
-      employee: emps.find(e => e.id === p.employeeId)
-    }));
+    try {
+      const res = await api.get('/gamification/challenges/participations');
+      return res.data.data;
+    } catch (err) {
+      console.warn("getChallengeParticipations failed, using mock", err);
+      await latency();
+      const prts = db.challengeParticipations;
+      const chs = db.challenges;
+      const emps = db.employees;
+      return prts.map(p => ({
+        ...p,
+        challenge: chs.find(c => c.id === p.challengeId),
+        employee: emps.find(e => e.id === p.employeeId)
+      }));
+    }
   },
 
   participateInChallenge: async (challengeId) => {
-    await latency();
-    const currentUser = getSessionUser();
-    const prts = db.challengeParticipations;
+    try {
+      const res = await api.post(`/gamification/challenges/${challengeId}/join`);
+      return res.data.data;
+    } catch (err) {
+      console.warn("participateInChallenge failed, using mock", err);
+      await latency();
+      const currentUser = getSessionUser();
+      const prts = db.challengeParticipations;
 
-    const exists = prts.find(p => p.employeeId === currentUser.id && p.challengeId === challengeId);
-    if (exists) return exists;
+      const exists = prts.find(p => p.employeeId === currentUser.id && p.challengeId === challengeId);
+      if (exists) return exists;
 
-    const newPrt = {
-      id: `chp-${Date.now()}`,
-      challengeId,
-      employeeId: currentUser.id,
-      progress: 0,
-      proofUrl: null,
-      approvalStatus: 'PENDING',
-      xpAwarded: 0,
-      createdAt: new Date().toISOString()
-    };
-    prts.push(newPrt);
-    db.challengeParticipations = prts;
-    return newPrt;
+      const newPrt = {
+        id: `chp-${Date.now()}`,
+        challengeId,
+        employeeId: currentUser.id,
+        progress: 0,
+        proofUrl: null,
+        approvalStatus: 'PENDING',
+        xpAwarded: 0,
+        createdAt: new Date().toISOString()
+      };
+      prts.push(newPrt);
+      db.challengeParticipations = prts;
+      return newPrt;
+    }
   },
 
   updateChallengeProgress: async (participationId, progress, proofUrl) => {
-    await latency();
-    const prts = db.challengeParticipations;
-    const idx = prts.findIndex(p => p.id === participationId);
-    if (idx === -1) throw new Error('Challenge participation not found');
+    try {
+      const res = await api.patch(`/gamification/challenges/participations/${participationId}`, { progress, proofUrl });
+      return res.data.data;
+    } catch (err) {
+      console.warn("updateChallengeProgress failed, using mock", err);
+      await latency();
+      const prts = db.challengeParticipations;
+      const idx = prts.findIndex(p => p.id === participationId);
+      if (idx === -1) throw new Error('Challenge participation not found');
 
-    prts[idx].progress = progress;
-    if (proofUrl) prts[idx].proofUrl = proofUrl;
+      prts[idx].progress = progress;
+      if (proofUrl) prts[idx].proofUrl = proofUrl;
 
-    const chs = db.challenges;
-    const ch = chs.find(c => c.id === prts[idx].challengeId);
-    
-    if (progress === 100) {
-      if (ch && !ch.evidenceRequired) {
-        prts[idx].approvalStatus = 'APPROVED';
-        prts[idx].xpAwarded = ch.xp;
-        
-        addXPAndPoints(prts[idx].employeeId, ch.xp, 'CHALLENGE', prts[idx].id);
-      } else {
-        prts[idx].approvalStatus = 'PENDING';
+      const chs = db.challenges;
+      const ch = chs.find(c => c.id === prts[idx].challengeId);
+      
+      if (progress === 100) {
+        if (ch && !ch.evidenceRequired) {
+          prts[idx].approvalStatus = 'APPROVED';
+          prts[idx].xpAwarded = ch.xp;
+          
+          addXPAndPoints(prts[idx].employeeId, ch.xp, 'CHALLENGE', prts[idx].id);
+        } else {
+          prts[idx].approvalStatus = 'PENDING';
+        }
       }
-    }
 
-    db.challengeParticipations = prts;
-    return prts[idx];
+      db.challengeParticipations = prts;
+      return prts[idx];
+    }
   },
 
   approveChallengeParticipation: async (id) => {
-    await latency();
-    const prts = db.challengeParticipations;
-    const idx = prts.findIndex(p => p.id === id);
-    if (idx === -1) throw new Error('Participation not found');
+    try {
+      const res = await api.post(`/gamification/challenges/participations/${id}/approve`);
+      return res.data.data;
+    } catch (err) {
+      console.warn("approveChallengeParticipation failed, using mock", err);
+      await latency();
+      const prts = db.challengeParticipations;
+      const idx = prts.findIndex(p => p.id === id);
+      if (idx === -1) throw new Error('Participation not found');
 
-    prts[idx].approvalStatus = 'APPROVED';
-    
-    const chs = db.challenges;
-    const ch = chs.find(c => c.id === prts[idx].challengeId);
-    if (ch) {
-      prts[idx].xpAwarded = ch.xp;
-      addXPAndPoints(prts[idx].employeeId, ch.xp, 'CHALLENGE', prts[idx].id);
+      prts[idx].approvalStatus = 'APPROVED';
+      
+      const chs = db.challenges;
+      const ch = chs.find(c => c.id === prts[idx].challengeId);
+      if (ch) {
+        prts[idx].xpAwarded = ch.xp;
+        addXPAndPoints(prts[idx].employeeId, ch.xp, 'CHALLENGE', prts[idx].id);
+      }
+
+      db.challengeParticipations = prts;
+      return prts[idx];
     }
-
-    db.challengeParticipations = prts;
-    return prts[idx];
   },
 
   rejectChallengeParticipation: async (id) => {
-    await latency();
-    const prts = db.challengeParticipations;
-    const idx = prts.findIndex(p => p.id === id);
-    if (idx === -1) throw new Error('Participation not found');
+    try {
+      const res = await api.post(`/gamification/challenges/participations/${id}/reject`);
+      return res.data.data;
+    } catch (err) {
+      console.warn("rejectChallengeParticipation failed, using mock", err);
+      await latency();
+      const prts = db.challengeParticipations;
+      const idx = prts.findIndex(p => p.id === id);
+      if (idx === -1) throw new Error('Participation not found');
 
-    prts[idx].approvalStatus = 'REJECTED';
-    db.challengeParticipations = prts;
-    return prts[idx];
+      prts[idx].approvalStatus = 'REJECTED';
+      db.challengeParticipations = prts;
+      return prts[idx];
+    }
   },
 
   getBadges: async () => {
-    await latency();
-    return db.badges;
+    try {
+      const res = await api.get('/gamification/badges');
+      return res.data.data;
+    } catch (err) {
+      console.warn("getBadges failed, using mock", err);
+      await latency();
+      return db.badges;
+    }
   },
 
   getEmployeeBadges: async () => {
-    await latency();
-    const ebs = db.employeeBadges;
-    const badges = db.badges;
-    return ebs.map(eb => ({
-      ...eb,
-      badge: badges.find(b => b.id === eb.badgeId)
-    }));
+    try {
+      const res = await api.get('/gamification/employee-badges');
+      return res.data.data;
+    } catch (err) {
+      console.warn("getEmployeeBadges failed, using mock", err);
+      await latency();
+      const ebs = db.employeeBadges;
+      const badges = db.badges;
+      return ebs.map(eb => ({
+        ...eb,
+        badge: badges.find(b => b.id === eb.badgeId)
+      }));
+    }
   },
 
   getLeaderboard: async () => {
-    await latency();
-    const emps = [...db.employees];
-    const depts = db.departments;
-    
-    const sorted = emps.sort((a, b) => b.xp - a.xp);
-    return sorted.map((emp, index) => ({
-      id: emp.id,
-      name: emp.name,
-      xp: emp.xp,
-      rank: index + 1,
-      department: depts.find(d => d.id === emp.departmentId)?.name || 'Unknown'
-    }));
+    try {
+      const res = await api.get('/gamification/leaderboard');
+      return res.data.data;
+    } catch (err) {
+      console.warn("getLeaderboard failed, using mock", err);
+      await latency();
+      const emps = [...db.employees];
+      const depts = db.departments;
+      
+      const sorted = emps.sort((a, b) => b.xp - a.xp);
+      return sorted.map((emp, index) => ({
+        id: emp.id,
+        name: emp.name,
+        xp: emp.xp,
+        rank: index + 1,
+        department: depts.find(d => d.id === emp.departmentId)?.name || 'Unknown'
+      }));
+    }
   },
 
   getRewards: async () => {
-    await latency();
-    return db.rewards;
+    try {
+      const res = await api.get('/gamification/rewards');
+      return res.data.data;
+    } catch (err) {
+      console.warn("getRewards failed, using mock", err);
+      await latency();
+      return db.rewards;
+    }
   },
 
   createReward: async (data) => {
-    await latency();
-    const rewards = db.rewards;
-    const newReward = { ...data, id: `rwd-${Date.now()}` };
-    rewards.push(newReward);
-    db.rewards = rewards;
-    return newReward;
+    try {
+      const res = await api.post('/gamification/rewards', data);
+      return res.data.data;
+    } catch (err) {
+      console.warn("createReward failed, using mock", err);
+      await latency();
+      const rewards = db.rewards;
+      const newReward = { ...data, id: `rwd-${Date.now()}` };
+      rewards.push(newReward);
+      db.rewards = rewards;
+      return newReward;
+    }
   },
 
   redeemReward: async (id) => {
-    await latency();
-    const currentUser = getSessionUser();
-    const rewards = db.rewards;
-    const rIdx = rewards.findIndex(r => r.id === id);
-    if (rIdx === -1) throw new Error('Reward not found');
-    
-    const reward = rewards[rIdx];
-    if (reward.stock < 1) throw new Error('Reward is out of stock');
+    try {
+      const res = await api.post(`/gamification/rewards/${id}/redeem`);
+      return res.data.data;
+    } catch (err) {
+      console.warn("redeemReward failed, using mock", err);
+      await latency();
+      const currentUser = getSessionUser();
+      const rewards = db.rewards;
+      const rIdx = rewards.findIndex(r => r.id === id);
+      if (rIdx === -1) throw new Error('Reward not found');
+      
+      const reward = rewards[rIdx];
+      if (reward.stock < 1) throw new Error('Reward is out of stock');
 
-    const currentPoints = db.pointsTransactions
-      .filter(tx => tx.employeeId === currentUser.id)
-      .reduce((sum, tx) => sum + tx.amount, 0);
+      const currentPoints = db.pointsTransactions
+        .filter(tx => tx.employeeId === currentUser.id)
+        .reduce((sum, tx) => sum + tx.amount, 0);
 
-    if (currentPoints < reward.pointsRequired) {
-      throw new Error(`Insufficient points balance. Need ${reward.pointsRequired}, but you only have ${currentPoints} points.`);
+      if (currentPoints < reward.pointsRequired) {
+        throw new Error(`Insufficient points balance. Need ${reward.pointsRequired}, but you only have ${currentPoints} points.`);
+      }
+
+      rewards[rIdx].stock -= 1;
+      db.rewards = rewards;
+
+      const redemptions = db.redemptions;
+      const newRedemption = {
+        id: `red-${Date.now()}`,
+        employeeId: currentUser.id,
+        rewardId: id,
+        pointsSpent: reward.pointsRequired,
+        createdAt: new Date().toISOString()
+      };
+      redemptions.push(newRedemption);
+      db.redemptions = redemptions;
+
+      const txs = db.pointsTransactions;
+      txs.push({
+        id: `ptx-${Date.now()}`,
+        employeeId: currentUser.id,
+        sourceType: 'REDEMPTION',
+        sourceId: newRedemption.id,
+        amount: -reward.pointsRequired,
+        createdAt: new Date().toISOString()
+      });
+      db.pointsTransactions = txs;
+
+      return newRedemption;
     }
-
-    rewards[rIdx].stock -= 1;
-    db.rewards = rewards;
-
-    const redemptions = db.redemptions;
-    const newRedemption = {
-      id: `red-${Date.now()}`,
-      employeeId: currentUser.id,
-      rewardId: id,
-      pointsSpent: reward.pointsRequired,
-      createdAt: new Date().toISOString()
-    };
-    redemptions.push(newRedemption);
-    db.redemptions = redemptions;
-
-    const txs = db.pointsTransactions;
-    txs.push({
-      id: `ptx-${Date.now()}`,
-      employeeId: currentUser.id,
-      sourceType: 'REDEMPTION',
-      sourceId: newRedemption.id,
-      amount: -reward.pointsRequired,
-      createdAt: new Date().toISOString()
-    });
-    db.pointsTransactions = txs;
-
-    return newRedemption;
   },
 
   // Scoring
@@ -789,23 +921,35 @@ export const mockHandlers = {
   },
 
   getDepartments: async () => {
-    await latency();
-    return db.departments;
+    try {
+      const res = await api.get('/departments');
+      return res.data.data;
+    } catch (err) {
+      console.warn("getDepartments failed, using mock", err);
+      await latency();
+      return db.departments;
+    }
   },
 
   createDepartment: async (data) => {
-    await latency();
-    const depts = db.departments;
-    const newDept = {
-      ...data,
-      id: `dept-${Date.now()}`,
-      employeeCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    depts.push(newDept);
-    db.departments = depts;
-    return newDept;
+    try {
+      const res = await api.post('/departments', data);
+      return res.data.data;
+    } catch (err) {
+      console.warn("createDepartment failed, using mock", err);
+      await latency();
+      const depts = db.departments;
+      const newDept = {
+        ...data,
+        id: `dept-${Date.now()}`,
+        employeeCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      depts.push(newDept);
+      db.departments = depts;
+      return newDept;
+    }
   },
 
   getCategories: async () => {
