@@ -66,3 +66,4 @@ master.md
 .agent/
 .env
 .gitignore  
+design-system/
