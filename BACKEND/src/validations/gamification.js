@@ -1,5 +1,5 @@
-const { z } = require('zod');
-const { PointsSourceTypeSchema } = require('./enums');
+import { z } from 'zod';
+import { PointsSourceTypeSchema } from './enums.js';
 
 // ═══════════════════ POINTS TRANSACTION SCHEMAS ═══════════════════
 
@@ -55,7 +55,7 @@ const esgConfigSchema = z.object({
   }
 );
 
-module.exports = {
+export {
   createPointsTransactionSchema,
   updatePointsTransactionSchema,
   createRedemptionSchema,

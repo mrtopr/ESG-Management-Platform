@@ -1,5 +1,5 @@
-const { z } = require('zod');
-const { RoleSchema, CategoryTypeSchema } = require('./enums');
+import { z } from 'zod';
+import { RoleSchema, CategoryTypeSchema } from './enums.js';
 
 // ═══════════════════ DEPARTMENT SCHEMAS ═══════════════════
 
@@ -134,7 +134,7 @@ const createRewardSchema = z.object({
 
 const updateRewardSchema = createRewardSchema.partial();
 
-module.exports = {
+export {
   createDepartmentSchema,
   updateDepartmentSchema,
   createEmployeeSchema,

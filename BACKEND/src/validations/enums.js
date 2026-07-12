@@ -1,4 +1,4 @@
-const { z } = require('zod');
+import { z } from 'zod';
 
 // ═══════════════════ ENUMS VALIDATION SCHEMAS ═══════════════════
 
@@ -35,7 +35,7 @@ const PointsSourceTypeSchema = z.enum([
   'ADJUSTMENT',
 ]);
 
-module.exports = {
+export {
   RoleSchema,
   ApprovalStatusSchema,
   ChallengeStatusSchema,

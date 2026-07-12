@@ -1,11 +1,11 @@
-const { z } = require('zod');
-const {
+import { z } from 'zod';
+import {
   SourceTypeSchema,
   ApprovalStatusSchema,
   ChallengeStatusSchema,
   ComplianceSeveritySchema,
   ComplianceStatusSchema,
-} = require('./enums');
+} from './enums.js';
 
 // ═══════════════════ CARBON TRANSACTION SCHEMAS ═══════════════════
 
@@ -130,7 +130,7 @@ const createDepartmentScoreSchema = z.object({
 
 const updateDepartmentScoreSchema = createDepartmentScoreSchema.partial();
 
-module.exports = {
+export {
   createCarbonTransactionSchema,
   updateCarbonTransactionSchema,
   createCsrActivitySchema,

@@ -1,18 +1,4 @@
-const enums = require('./enums');
-const master = require('./master');
-const transactional = require('./transactional');
-const gamification = require('./gamification');
-
-module.exports = {
-  // Enums
-  ...enums,
-
-  // Master Data Schemas
-  ...master,
-
-  // Transactional Data Schemas
-  ...transactional,
-
-  // Gamification & Config Schemas
-  ...gamification,
-};
+export * from './enums.js';
+export * from './master.js';
+export * from './transactional.js';
+export * from './gamification.js';
