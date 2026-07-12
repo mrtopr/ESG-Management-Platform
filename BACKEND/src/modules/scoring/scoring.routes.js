@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { calculateDepartmentScore } from './scoring.controller.js';
+import { getDepartmentPrediction } from './prediction.controller.js';
 import { requireAuth } from '../../shared/middleware/auth.middleware.js';
 import { requireRole } from '../../shared/middleware/role.middleware.js';
 import { validate } from '../../shared/middleware/validate.middleware.js';
@@ -14,5 +15,6 @@ const calcSchema = z.object({
 });
 
 router.post('/calculate', requireRole(['ESG_ADMIN']), validate(calcSchema), calculateDepartmentScore);
+router.get('/predict/:departmentId', getDepartmentPrediction);
 
 export default router;
