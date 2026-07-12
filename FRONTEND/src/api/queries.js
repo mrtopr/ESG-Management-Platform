@@ -1,10 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { mockHandlers } from './client';
-import { 
-  EmissionFactor, CarbonTransaction, EnvironmentalGoal, CsrActivity,
-  EsgPolicy, Audit, ComplianceIssue, ComplianceStatus, Challenge,
-  Reward, EsgConfig, Department, Category
-} from '../types';
+import { mockHandlers, db } from './client';
+import { useToast } from '../hooks/useToast';
 
 // ─────────────── ENVIRONMENTAL HOOKS ───────────────
 
@@ -17,10 +13,12 @@ export const useEmissionFactors = () => {
 
 export const useCreateEmissionFactor = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (data: Omit<EmissionFactor, 'id'>) => mockHandlers.createEmissionFactor(data),
+    mutationFn: (data) => mockHandlers.createEmissionFactor(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['emissionFactors'] });
+      toast('New emission factor registered successfully.', 'success');
     },
   });
 };
@@ -34,14 +32,15 @@ export const useCarbonTransactions = () => {
 
 export const useCreateCarbonTransaction = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (data: Omit<CarbonTransaction, 'id' | 'co2Amount' | 'date'>) => 
-      mockHandlers.createCarbonTransaction(data),
-    onSuccess: () => {
+    mutationFn: (data) => mockHandlers.createCarbonTransaction(data),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['carbonTransactions'] });
       queryClient.invalidateQueries({ queryKey: ['goals'] });
       queryClient.invalidateQueries({ queryKey: ['departmentScores'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      toast(`Carbon logged successfully! +${data.co2Amount} kg CO2e committed to ledger.`, 'success');
     },
   });
 };
@@ -55,10 +54,12 @@ export const useGoals = () => {
 
 export const useCreateGoal = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (data: Omit<EnvironmentalGoal, 'id'>) => mockHandlers.createGoal(data),
+    mutationFn: (data) => mockHandlers.createGoal(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['goals'] });
+      toast('ESG Environmental Goal established.', 'success');
     },
   });
 };
@@ -74,10 +75,12 @@ export const useCSRActivities = () => {
 
 export const useCreateCSRActivity = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (data: Omit<CsrActivity, 'id'>) => mockHandlers.createCSRActivity(data),
+    mutationFn: (data) => mockHandlers.createCSRActivity(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['csrActivities'] });
+      toast('CSR activity campaign scheduled successfully.', 'success');
     },
   });
 };
@@ -91,35 +94,56 @@ export const useParticipations = () => {
 
 export const useCreateParticipation = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: ({ activityId, proofUrl }: { activityId: string; proofUrl: string | null }) => 
+    mutationFn: ({ activityId, proofUrl }) => 
       mockHandlers.createParticipation(activityId, proofUrl),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['participations'] });
+      toast('Participation points request logged. Awaiting admin review.', 'info');
     },
+    onError: (err) => {
+      toast(err.message || 'Already requested points for this activity.', 'error');
+    }
   });
 };
 
 export const useApproveParticipation = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (id: string) => mockHandlers.approveParticipation(id),
-    onSuccess: () => {
+    mutationFn: (id) => mockHandlers.approveParticipation(id),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['participations'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
       queryClient.invalidateQueries({ queryKey: ['employeeBadges'] });
       queryClient.invalidateQueries({ queryKey: ['departmentScores'] });
+      toast(`Volunteering approved! Employee awarded +50 Points & XP.`, 'success');
+      
+      const badges = db.employeeBadges.filter(eb => eb.employeeId === data.employeeId);
+      const prevCount = localStorage.getItem(`badge_count_${data.employeeId}`) || '0';
+      if (badges.length > Number(prevCount)) {
+        localStorage.setItem(`badge_count_${data.employeeId}`, String(badges.length));
+        const newBadge = db.badges.find(b => b.id === badges[badges.length - 1].badgeId);
+        if (newBadge) {
+          setTimeout(() => {
+            toast(`Congratulations! Unlocked "${newBadge.name}" Badge: ${newBadge.description}`, 'badge');
+          }, 1000);
+        }
+      }
     },
   });
 };
 
 export const useRejectParticipation = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (id: string) => mockHandlers.rejectParticipation(id),
+    mutationFn: (id) => mockHandlers.rejectParticipation(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['participations'] });
+      toast('CSR participation points request rejected.', 'error');
     },
   });
 };
@@ -135,24 +159,40 @@ export const usePolicies = () => {
 
 export const useCreatePolicy = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (data: Omit<EsgPolicy, 'id'>) => mockHandlers.createPolicy(data),
+    mutationFn: (data) => mockHandlers.createPolicy(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['policies'] });
+      toast('Integrity policy published successfully.', 'success');
     },
   });
 };
 
 export const useAcknowledgePolicy = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (id: string) => mockHandlers.acknowledgePolicy(id),
-    onSuccess: () => {
+    mutationFn: (id) => mockHandlers.acknowledgePolicy(id),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['policies'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
       queryClient.invalidateQueries({ queryKey: ['employeeBadges'] });
       queryClient.invalidateQueries({ queryKey: ['departmentScores'] });
+      toast('Governance policy e-signature recorded. +20 XP awarded.', 'success');
+      
+      const badges = db.employeeBadges.filter(eb => eb.employeeId === data.employeeId);
+      const prevCount = localStorage.getItem(`badge_count_${data.employeeId}`) || '0';
+      if (badges.length > Number(prevCount)) {
+        localStorage.setItem(`badge_count_${data.employeeId}`, String(badges.length));
+        const newBadge = db.badges.find(b => b.id === badges[badges.length - 1].badgeId);
+        if (newBadge) {
+          setTimeout(() => {
+            toast(`Congratulations! Unlocked "${newBadge.name}" Badge: ${newBadge.description}`, 'badge');
+          }, 1000);
+        }
+      }
     },
   });
 };
@@ -166,10 +206,12 @@ export const useAudits = () => {
 
 export const useCreateAudit = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (data: Omit<Audit, 'id'>) => mockHandlers.createAudit(data),
+    mutationFn: (data) => mockHandlers.createAudit(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['audits'] });
+      toast('Governance inspection audit scheduled.', 'success');
     },
   });
 };
@@ -183,25 +225,29 @@ export const useComplianceIssues = () => {
 
 export const useCreateComplianceIssue = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (data: Omit<ComplianceIssue, 'id' | 'createdAt'>) => mockHandlers.createComplianceIssue(data),
+    mutationFn: (data) => mockHandlers.createComplianceIssue(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['complianceIssues'] });
       queryClient.invalidateQueries({ queryKey: ['audits'] });
       queryClient.invalidateQueries({ queryKey: ['departmentScores'] });
+      toast('Compliance red flag warning issued.', 'warning');
     },
   });
 };
 
 export const useUpdateComplianceIssueStatus = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: ComplianceStatus }) => 
+    mutationFn: ({ id, status }) => 
       mockHandlers.updateComplianceIssueStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['complianceIssues'] });
       queryClient.invalidateQueries({ queryKey: ['audits'] });
       queryClient.invalidateQueries({ queryKey: ['departmentScores'] });
+      toast('Compliance warning status updated successfully.', 'success');
     },
   });
 };
@@ -217,10 +263,12 @@ export const useChallenges = () => {
 
 export const useCreateChallenge = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (data: Omit<Challenge, 'id'>) => mockHandlers.createChallenge(data),
+    mutationFn: (data) => mockHandlers.createChallenge(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
+      toast('New corporate environmental challenge created.', 'success');
     },
   });
 };
@@ -234,49 +282,86 @@ export const useChallengeParticipations = () => {
 
 export const useParticipateInChallenge = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (challengeId: string) => mockHandlers.participateInChallenge(challengeId),
+    mutationFn: (challengeId) => mockHandlers.participateInChallenge(challengeId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challengeParticipations'] });
+      toast('Joined challenge! Update progress parameters as you complete tasks.', 'success');
     },
   });
 };
 
 export const useUpdateChallengeProgress = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: ({ participationId, progress, proofUrl }: { participationId: string; progress: number; proofUrl: string | null }) => 
+    mutationFn: ({ participationId, progress, proofUrl }) => 
       mockHandlers.updateChallengeProgress(participationId, progress, proofUrl),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['challengeParticipations'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
       queryClient.invalidateQueries({ queryKey: ['employeeBadges'] });
       queryClient.invalidateQueries({ queryKey: ['departmentScores'] });
+      
+      if (data.approvalStatus === 'APPROVED') {
+        toast(`Challenge completed! Awarded +${data.xpAwarded} XP points.`, 'success');
+        
+        const badges = db.employeeBadges.filter(eb => eb.employeeId === data.employeeId);
+        const prevCount = localStorage.getItem(`badge_count_${data.employeeId}`) || '0';
+        if (badges.length > Number(prevCount)) {
+          localStorage.setItem(`badge_count_${data.employeeId}`, String(badges.length));
+          const newBadge = db.badges.find(b => b.id === badges[badges.length - 1].badgeId);
+          if (newBadge) {
+            setTimeout(() => {
+              toast(`Congratulations! Unlocked "${newBadge.name}" Badge: ${newBadge.description}`, 'badge');
+            }, 1000);
+          }
+        }
+      } else {
+        toast(`Challenge progress updated to ${data.progress}%. Awaiting proof check.`, 'info');
+      }
     },
   });
 };
 
 export const useApproveChallengeParticipation = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (id: string) => mockHandlers.approveChallengeParticipation(id),
-    onSuccess: () => {
+    mutationFn: (id) => mockHandlers.approveChallengeParticipation(id),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['challengeParticipations'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
       queryClient.invalidateQueries({ queryKey: ['employeeBadges'] });
       queryClient.invalidateQueries({ queryKey: ['departmentScores'] });
+      toast(`Challenge submission approved! +${data.xpAwarded} XP issued.`, 'success');
+
+      const badges = db.employeeBadges.filter(eb => eb.employeeId === data.employeeId);
+      const prevCount = localStorage.getItem(`badge_count_${data.employeeId}`) || '0';
+      if (badges.length > Number(prevCount)) {
+        localStorage.setItem(`badge_count_${data.employeeId}`, String(badges.length));
+        const newBadge = db.badges.find(b => b.id === badges[badges.length - 1].badgeId);
+        if (newBadge) {
+          setTimeout(() => {
+            toast(`Congratulations! Unlocked "${newBadge.name}" Badge: ${newBadge.description}`, 'badge');
+          }, 1000);
+        }
+      }
     },
   });
 };
 
 export const useRejectChallengeParticipation = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (id: string) => mockHandlers.rejectChallengeParticipation(id),
+    mutationFn: (id) => mockHandlers.rejectChallengeParticipation(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['challengeParticipations'] });
+      toast('Challenge submission proof rejected.', 'error');
     },
   });
 };
@@ -311,23 +396,30 @@ export const useRewards = () => {
 
 export const useCreateReward = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (data: Omit<Reward, 'id'>) => mockHandlers.createReward(data),
+    mutationFn: (data) => mockHandlers.createReward(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rewards'] });
+      toast('Sustainable store reward registered.', 'success');
     },
   });
 };
 
 export const useRedeemReward = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (id: string) => mockHandlers.redeemReward(id),
+    mutationFn: (id) => mockHandlers.redeemReward(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rewards'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+      toast('Reward voucher redeemed successfully! Check points ledger.', 'success');
     },
+    onError: (err) => {
+      toast(err.message || 'Redemption failed.', 'error');
+    }
   });
 };
 
@@ -349,11 +441,13 @@ export const useConfig = () => {
 
 export const useUpdateConfig = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (data: Partial<EsgConfig>) => mockHandlers.updateConfig(data),
+    mutationFn: (data) => mockHandlers.updateConfig(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['config'] });
       queryClient.invalidateQueries({ queryKey: ['departmentScores'] });
+      toast('Global configurations synchronized successfully.', 'success');
     },
   });
 };
@@ -367,11 +461,13 @@ export const useDepartments = () => {
 
 export const useCreateDepartment = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (data: Omit<Department, 'id' | 'employeeCount' | 'createdAt' | 'updatedAt'>) => 
+    mutationFn: (data) => 
       mockHandlers.createDepartment(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['departments'] });
+      toast('Department registry added.', 'success');
     },
   });
 };
@@ -385,10 +481,12 @@ export const useCategories = () => {
 
 export const useCreateCategory = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   return useMutation({
-    mutationFn: (data: Omit<Category, 'id'>) => mockHandlers.createCategory(data),
+    mutationFn: (data) => mockHandlers.createCategory(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
+      toast('ESG category criteria registered.', 'success');
     },
   });
 };
