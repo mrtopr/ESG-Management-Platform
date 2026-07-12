@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import { 
-  Award, Trophy, Leaf, Store, CheckCircle, Flame, ArrowUpRight, 
-  HelpCircle, ChevronRight, Lock, Gift, Star, RefreshCcw
+  Award, Trophy, Store, CheckCircle, Flame, Lock, Gift, Star, Eye, Check, X as CloseIcon, Clock
 } from 'lucide-react';
 import { 
   useChallenges, useChallengeParticipations, useParticipateInChallenge, 
   useUpdateChallengeProgress, useBadges, useEmployeeBadges, 
-  useLeaderboard, useRewards, useRedeemReward 
+  useLeaderboard, useRewards, useRedeemReward,
+  useApproveChallengeParticipation, useRejectChallengeParticipation
 } from '../api/queries';
 import { useAuth } from '../hooks/useAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '../components/Card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/Card';
 import { Dialog } from '../components/Dialog';
 import { db } from '../api/client';
 
-export const Gamification: React.FC = () => {
-  const { user } = useAuth();
+export const Gamification = () => {
+  const { user, isAdmin, isDeptHead } = useAuth();
 
   // Queries
   const { data: challenges = [] } = useChallenges();
@@ -28,10 +28,12 @@ export const Gamification: React.FC = () => {
   const joinChallenge = useParticipateInChallenge();
   const updateProgress = useUpdateChallengeProgress();
   const redeemReward = useRedeemReward();
+  const approveChallenge = useApproveChallengeParticipation();
+  const rejectChallenge = useRejectChallengeParticipation();
 
   // Dialog State
   const [redeemModalOpen, setRedeemModalOpen] = useState(false);
-  const [selectedReward, setSelectedReward] = useState<any>(null);
+  const [selectedReward, setSelectedReward] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -40,21 +42,22 @@ export const Gamification: React.FC = () => {
   const [selectedPartId, setSelectedPartId] = useState('');
   const [sliderProgress, setSliderProgress] = useState(50);
   const [challengeProof, setChallengeProof] = useState('');
+  const [viewProofOpen, setViewProofOpen] = useState(false);
+  const [activeProofUrl, setActiveProofUrl] = useState('');
 
   // Computations
   const userParticipations = participations.filter(p => p.employeeId === user?.id);
   const userBadges = employeeBadges.filter(eb => eb.employeeId === user?.id);
 
-  // Compute user current points balance
   const currentPoints = db.pointsTransactions
     .filter(tx => tx.employeeId === user?.id)
     .reduce((sum, tx) => sum + tx.amount, 0);
 
-  const handleJoinChallenge = (challengeId: string) => {
+  const handleJoinChallenge = (challengeId) => {
     joinChallenge.mutate(challengeId);
   };
 
-  const handleUpdateProgressSubmit = (e: React.FormEvent) => {
+  const handleUpdateProgressSubmit = (e) => {
     e.preventDefault();
     if (!selectedPartId) return;
 
@@ -71,7 +74,7 @@ export const Gamification: React.FC = () => {
     });
   };
 
-  const handleRedeemClick = (reward: any) => {
+  const handleRedeemClick = (reward) => {
     setSelectedReward(reward);
     setErrorMsg('');
     setSuccessMsg('');
@@ -86,7 +89,7 @@ export const Gamification: React.FC = () => {
         setSuccessMsg(`Successfully redeemed! You earned "${selectedReward.name}".`);
         refetchLeaderboard();
       },
-      onError: (err: any) => {
+      onError: (err) => {
         setErrorMsg(err.message || 'Redemption failed.');
       }
     });
@@ -108,7 +111,7 @@ export const Gamification: React.FC = () => {
 
         {/* Dynamic Points Indicator */}
         <div className="flex items-center space-x-3 bg-esg-points/10 border border-esg-points/30 rounded-2xl px-4 py-2">
-          <Star className="w-5 h-5 text-esg-points fill-esg-points animate-spin-slow" />
+          <Star className="w-5 h-5 text-esg-points fill-esg-points animate-pulse" />
           <div>
             <p className="text-[10px] text-esg-points font-bold uppercase tracking-wider">Points Ledger</p>
             <p className="text-lg font-extrabold text-foreground">{currentPoints} Points</p>
@@ -188,7 +191,6 @@ export const Gamification: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Progress slider representation */}
                     {participation && (
                       <div className="space-y-1">
                         <div className="w-full bg-muted/60 rounded-full h-1.5">
@@ -285,6 +287,72 @@ export const Gamification: React.FC = () => {
               ))}
             </CardContent>
           </Card>
+
+          {/* Challenge Approvals Board (Admins / Dept Heads only) */}
+          {(isAdmin || isDeptHead) && (
+            <Card className="bg-card/30 border-primary/10">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center">
+                  <Clock className="w-5 h-5 text-esg-points mr-2" />
+                  Challenge Approvals
+                </CardTitle>
+                <CardDescription>Review employee completed challenge submissions</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {participations.filter(p => p.approvalStatus === 'PENDING' && p.progress === 100).length === 0 ? (
+                  <div className="text-center py-6 text-xs text-muted-foreground">
+                    No pending challenge reviews.
+                  </div>
+                ) : (
+                  participations
+                    .filter(p => p.approvalStatus === 'PENDING' && p.progress === 100)
+                    .map(prt => (
+                      <div key={prt.id} className="p-3 border border-border/40 bg-card rounded-xl space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-xs font-bold text-foreground truncate">{prt.employee?.name}</p>
+                            <p className="text-[10px] text-muted-foreground line-clamp-1">{prt.challenge?.title}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center pt-1.5 border-t border-border/30 text-[10px]">
+                          <span className="text-muted-foreground font-mono">{new Date(prt.createdAt).toLocaleDateString()}</span>
+                          
+                          <div className="flex items-center space-x-1.5">
+                            {prt.proofUrl && (
+                              <button 
+                                onClick={() => {
+                                  setActiveProofUrl(prt.proofUrl);
+                                  setViewProofOpen(true);
+                                }}
+                                className="text-primary hover:underline flex items-center mr-2 font-bold"
+                              >
+                                <Eye className="w-3.5 h-3.5 mr-0.5" /> View Proof
+                              </button>
+                            )}
+
+                            <button 
+                              onClick={() => approveChallenge.mutate(prt.id)}
+                              disabled={approveChallenge.isPending}
+                              className="p-1 rounded bg-primary/20 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                              onClick={() => rejectChallenge.mutate(prt.id)}
+                              disabled={rejectChallenge.isPending}
+                              className="p-1 rounded bg-destructive/20 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                            >
+                              <CloseIcon className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Unlocked Badges Drawer */}
           <Card className="bg-card/30">
@@ -443,6 +511,39 @@ export const Gamification: React.FC = () => {
           )}
         </div>
       </Dialog>
+
+      {/* View Proof Image Dialog */}
+      <Dialog
+        isOpen={viewProofOpen}
+        onClose={() => setViewProofOpen(false)}
+        title="Challenge Evidence Audit"
+      >
+        <div className="space-y-4">
+          <div className="rounded-xl border border-border overflow-hidden bg-muted aspect-video flex items-center justify-center">
+            {activeProofUrl ? (
+              <img 
+                src={activeProofUrl} 
+                alt="Audit Evidence File" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.src = "https://images.unsplash.com/photo-1541614101331-1a5a3a194e92?w=400";
+                }}
+              />
+            ) : (
+              <span className="text-xs text-muted-foreground">No visual evidence uploaded.</span>
+            )}
+          </div>
+          <div className="flex justify-end pt-2 border-t border-border/50">
+            <button 
+              onClick={() => setViewProofOpen(false)}
+              className="px-4 py-2 bg-muted text-foreground text-sm font-semibold rounded-xl hover:bg-border transition-colors"
+            >
+              Close Audit
+            </button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 };
+export default Gamification;
