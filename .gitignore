@@ -67,3 +67,4 @@ master.md
 .env
 .gitignore  
 design-system/
+/design-system/
