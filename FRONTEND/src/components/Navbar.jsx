@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useScores } from '../hooks/useScores';
 import { useComplianceIssues, useParticipations, useChallengeParticipations } from '../api/queries';
 
-export const Navbar: React.FC = () => {
+export const Navbar = () => {
   const { user, allUsers, switchUser } = useAuth();
   const { orgScore } = useScores();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -53,7 +53,7 @@ export const Navbar: React.FC = () => {
           >
             <RefreshCw className="w-3.5 h-3.5 text-primary animate-pulse" />
             <span className="font-medium">Testing Persona: <strong className="text-primary">{user?.name}</strong></span>
-            <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
 
           {dropdownOpen && (
@@ -118,7 +118,7 @@ export const Navbar: React.FC = () => {
                   <>
                     {pendingCsr.map(p => (
                       <div key={p.id} className="p-2 rounded-lg bg-muted/40 hover:bg-muted text-[11px] border border-border/30 flex items-start space-x-2">
-                        <Award className="w-4 h-4 text-esg-social flex-shrink-0 mt-0.5" />
+                        <Award className="w-4.5 h-4.5 text-esg-social flex-shrink-0 mt-0.5" />
                         <div>
                           <p className="font-semibold">CSR Participation Approval Needed</p>
                           <p className="text-muted-foreground text-[10px]">User requested approval for CSR Activity points.</p>
@@ -127,7 +127,7 @@ export const Navbar: React.FC = () => {
                     ))}
                     {pendingChallenge.map(c => (
                       <div key={c.id} className="p-2 rounded-lg bg-muted/40 hover:bg-muted text-[11px] border border-border/30 flex items-start space-x-2">
-                        <Award className="w-4 h-4 text-esg-points flex-shrink-0 mt-0.5" />
+                        <Award className="w-4.5 h-4.5 text-esg-points flex-shrink-0 mt-0.5" />
                         <div>
                           <p className="font-semibold">Challenge Submission Review</p>
                           <p className="text-muted-foreground text-[10px]">User submitted proof for active gamification challenge.</p>
@@ -136,7 +136,7 @@ export const Navbar: React.FC = () => {
                     ))}
                     {overdueIssues.map(i => (
                       <div key={i.id} className="p-2 rounded-lg bg-red-500/5 hover:bg-red-500/10 text-[11px] border border-red-500/15 flex items-start space-x-2">
-                        <ShieldAlert className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                        <ShieldAlert className="w-4.5 h-4.5 text-destructive flex-shrink-0 mt-0.5" />
                         <div>
                           <p className="font-semibold text-destructive">Compliance Action Overdue</p>
                           <p className="text-muted-foreground text-[10px]">{i.description}</p>
