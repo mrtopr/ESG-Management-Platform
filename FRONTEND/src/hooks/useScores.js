@@ -1,30 +1,26 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '../api/client';
-import { DepartmentScore } from '../types';
 
 export const useScores = () => {
   const queryClient = useQueryClient();
 
-  const calculateDepartmentScore = (departmentId: string): Omit<DepartmentScore, 'id' | 'createdAt'> => {
+  const calculateDepartmentScore = (departmentId) => {
     const config = db.config;
-    const period = '2026-Q3'; // Current active period
+    const period = '2026-Q3';
 
-    // 1. Environmental Score (based on carbon transactions)
-    // Baseline: 4000 kg. Every 50kg reduces score by 1 point.
+    // 1. Environmental Score
     const transactions = db.carbonTransactions.filter(t => t.departmentId === departmentId);
     const totalCo2 = transactions.reduce((sum, t) => sum + t.co2Amount, 0);
     const envScore = Math.max(10, Math.round((100 - (totalCo2 / 50)) * 10) / 10);
 
-    // 2. Social Score (based on approved CSR participations)
-    // Baseline of 50. Every approved participation awards 15 points. Clamped to 100.
+    // 2. Social Score
     const deptEmployees = db.employees.filter(e => e.departmentId === departmentId).map(e => e.id);
     const approvedCSRCount = db.participations.filter(p => 
       deptEmployees.includes(p.employeeId) && p.approvalStatus === 'APPROVED'
     ).length;
     const socialScore = Math.min(100, 60 + (approvedCSRCount * 10));
 
-    // 3. Governance Score (based on compliance issues)
-    // Starts at 100. -15 for open issues, -35 for overdue issues.
+    // 3. Governance Score
     const deptAudits = db.audits.filter(a => a.departmentId === departmentId).map(a => a.id);
     const issues = db.complianceIssues.filter(i => deptAudits.includes(i.auditId));
     const openCount = issues.filter(i => i.status === 'OPEN' || i.status === 'IN_PROGRESS').length;
@@ -51,7 +47,6 @@ export const useScores = () => {
   const getScoresQuery = useQuery({
     queryKey: ['departmentScores'],
     queryFn: async () => {
-      // Return populated list
       const savedScores = db.departmentScores;
       const depts = db.departments;
       return savedScores.map(score => ({
@@ -62,7 +57,7 @@ export const useScores = () => {
   });
 
   const recalculateMutation = useMutation({
-    mutationFn: async (departmentId: string) => {
+    mutationFn: async (departmentId) => {
       const computed = calculateDepartmentScore(departmentId);
       const scores = db.departmentScores;
       
@@ -77,7 +72,7 @@ export const useScores = () => {
           id: `score-${Date.now()}`,
           ...computed,
           createdAt: new Date().toISOString()
-        } as DepartmentScore);
+        });
       }
       db.departmentScores = scores;
       return computed;
@@ -87,7 +82,6 @@ export const useScores = () => {
     }
   });
 
-  // Aggregated Org-Level Scores
   const getOrgLevelScore = () => {
     const scores = getScoresQuery.data || [];
     if (scores.length === 0) return { env: 75, social: 70, gov: 80, total: 75 };
