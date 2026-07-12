@@ -19,7 +19,7 @@
     --border: 223 47% 20%;
     --input: 223 47% 20%;
     
-    --primary: 150 84% 39%;         /* Eco Emerald Green #10b981 */
+    --primary: 174 84% 39%;         /* Fintech Cool Teal Accent */
     --primary-foreground: 222 47% 11%;
     
     --secondary: 217.2 91.2% 59.8%; /* Royal Blue for Social */
@@ -31,7 +31,7 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
     
-    --ring: 150 84% 39%;
+    --ring: 174 84% 39%;
     --radius: 0.75rem;
   }
 
@@ -51,7 +51,7 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     
-    --primary: 150 84% 39%;
+    --primary: 174 84% 39%;
     --primary-foreground: 210 40% 98%;
     
     --secondary: 210 40% 96.1%;
@@ -63,7 +63,7 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
     
-    --ring: 150 84% 39%;
+    --ring: 174 84% 39%;
   }
 }
 
