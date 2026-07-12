@@ -35,6 +35,12 @@ const defaultConfig = {
   autoEmissionCalc: true,
   evidenceRequired: true,
   badgeAutoAward: true,
+  notifyInApp: true,
+  notifyEmail: false,
+  notifyNewCompliance: true,
+  notifyApprovalDecisions: true,
+  notifyPolicyReminders: true,
+  notifyBadgeUnlocks: true,
 };
 
 const defaultDepartments = [

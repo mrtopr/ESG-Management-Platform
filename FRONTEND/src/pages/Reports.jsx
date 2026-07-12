@@ -72,9 +72,28 @@ export const Reports = () => {
 
   const handleExport = (type) => {
     setExportType(type);
+    
+    const params = new URLSearchParams({
+      format: type,
+      departmentId: selectedDeptId,
+      dateFrom,
+      dateTo,
+      includeEnv: includeEnv ? 'true' : 'false',
+      includeSocial: includeSocial ? 'true' : 'false',
+      includeGov: includeGov ? 'true' : 'false'
+    });
+
+    const link = document.createElement('a');
+    link.href = `/api/reports/export?${params.toString()}`;
+    const ext = type === 'excel' ? 'xls' : type === 'pdf' ? 'txt' : 'csv';
+    link.setAttribute('download', `esg-report-${new Date().toISOString().split('T')[0]}.${ext}`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
     setTimeout(() => {
       setExportType(null);
-      setSuccessToast(`ESG_Report_${new Date().toISOString().split('T')[0]}.${type === 'excel' ? 'xlsx' : type} downloaded successfully!`);
+      setSuccessToast(`ESG_Report_${new Date().toISOString().split('T')[0]}.${ext} compiled & downloaded successfully!`);
       setTimeout(() => setSuccessToast(''), 4000);
     }, 1200);
   };

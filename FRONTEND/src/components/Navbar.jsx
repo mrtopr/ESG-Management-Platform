@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { 
-  Bell, ChevronDown, RefreshCw, Layers, Award, ShieldAlert, CheckCircle 
+  Bell, ChevronDown, RefreshCw, Layers, Award, ShieldAlert, CheckCircle, FileText, Trophy
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useScores } from '../hooks/useScores';
-import { useComplianceIssues, useParticipations, useChallengeParticipations } from '../api/queries';
+import { 
+  useComplianceIssues, useParticipations, useChallengeParticipations, 
+  useConfig, usePolicies, useEmployeeBadges 
+} from '../api/queries';
 
 export const Navbar = () => {
   const { user, allUsers, switchUser } = useAuth();
@@ -16,13 +19,28 @@ export const Navbar = () => {
   const { data: participations = [] } = useParticipations();
   const { data: issues = [] } = useComplianceIssues();
   const { data: challengeParts = [] } = useChallengeParticipations();
+  const { data: config } = useConfig();
+  const { data: policies = [] } = usePolicies();
+  const { data: employeeBadges = [] } = useEmployeeBadges();
 
-  // Filter pending approvals
-  const pendingCsr = participations.filter(p => p.approvalStatus === 'PENDING');
-  const pendingChallenge = challengeParts.filter(p => p.approvalStatus === 'PENDING');
-  const overdueIssues = issues.filter(i => i.status === 'OVERDUE');
+  // Filter pending approvals (respect config flags)
+  const pendingCsr = (config?.notifyApprovalDecisions ?? true)
+    ? participations.filter(p => p.approvalStatus === 'PENDING')
+    : [];
+  const pendingChallenge = (config?.notifyApprovalDecisions ?? true)
+    ? challengeParts.filter(p => p.approvalStatus === 'PENDING')
+    : [];
+  const overdueIssues = (config?.notifyNewCompliance ?? true)
+    ? issues.filter(i => i.status === 'OVERDUE')
+    : [];
+  const unacknowledgedPolicies = (config?.notifyPolicyReminders ?? true)
+    ? policies.filter(pol => !pol.acknowledgements?.some(a => a.employeeId === user?.id))
+    : [];
+  const unlockedBadges = (config?.notifyBadgeUnlocks ?? true)
+    ? employeeBadges.filter(eb => eb.employeeId === user?.id)
+    : [];
 
-  const notificationsCount = pendingCsr.length + pendingChallenge.length + overdueIssues.length;
+  const notificationsCount = pendingCsr.length + pendingChallenge.length + overdueIssues.length + unacknowledgedPolicies.length + unlockedBadges.length;
 
   return (
     <header className="h-16 border-b border-border bg-card/45 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20">
@@ -140,6 +158,24 @@ export const Navbar = () => {
                         <div>
                           <p className="font-semibold text-destructive">Compliance Action Overdue</p>
                           <p className="text-muted-foreground text-[10px]">{i.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {unacknowledgedPolicies.map(pol => (
+                      <div key={pol.id} className="p-2 rounded-lg bg-yellow-500/5 hover:bg-yellow-500/10 text-[11px] border border-yellow-500/15 flex items-start space-x-2">
+                        <FileText className="w-4.5 h-4.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-amber-500">Sign Policy Reminder</p>
+                          <p className="text-muted-foreground text-[10px]">Acknowledge and sign: {pol.title}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {unlockedBadges.map(eb => (
+                      <div key={eb.id} className="p-2 rounded-lg bg-emerald-500/5 hover:bg-emerald-500/10 text-[11px] border border-emerald-500/15 flex items-start space-x-2">
+                        <Trophy className="w-4.5 h-4.5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-emerald-400">Badge Earned!</p>
+                          <p className="text-muted-foreground text-[10px]">Congratulations! You unlocked "{eb.badge?.name || 'Eco Badge'}"</p>
                         </div>
                       </div>
                     ))}

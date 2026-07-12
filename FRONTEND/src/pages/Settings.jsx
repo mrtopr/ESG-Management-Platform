@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Settings, Sliders, ToggleLeft, Layers, Plus, Save, AlertTriangle, CheckCircle 
+  Settings, Sliders, ToggleLeft, Layers, Plus, Save, AlertTriangle, CheckCircle, Bell 
 } from 'lucide-react';
 import { 
   useConfig, useUpdateConfig, 
@@ -274,6 +274,94 @@ export const SettingsPage = () => {
                   onChange={(e) => handleToggle('badgeAutoAward', e.target.checked)}
                   className="w-9 h-5 bg-muted rounded-full appearance-none checked:bg-primary relative before:absolute before:h-4 before:w-4 before:bg-white before:rounded-full before:top-0.5 before:left-0.5 checked:before:translate-x-4 before:transition-all cursor-pointer border border-border"
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Notification Settings */}
+          <Card className="bg-card/40">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <Bell className="w-5 h-5 text-primary mr-2" />
+                Notification Settings
+              </CardTitle>
+              <CardDescription>Configure communication channels and alert types for ESG activities</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-3 border border-border/40 rounded-2xl bg-muted/10">
+                <div className="pr-4">
+                  <p className="text-xs font-bold text-foreground">In-App Alerts</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Show notifications directly in the top navigation bar</p>
+                </div>
+                <input 
+                  type="checkbox"
+                  checked={config?.notifyInApp ?? true}
+                  disabled={!isAdmin}
+                  onChange={(e) => handleToggle('notifyInApp', e.target.checked)}
+                  className="w-9 h-5 bg-muted rounded-full appearance-none checked:bg-primary relative before:absolute before:h-4 before:w-4 before:bg-white before:rounded-full before:top-0.5 before:left-0.5 checked:before:translate-x-4 before:transition-all cursor-pointer border border-border"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 border border-border/40 rounded-2xl bg-muted/10">
+                <div className="pr-4">
+                  <p className="text-xs font-bold text-foreground">Email Notifications</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Dispatch system digest emails to stakeholders</p>
+                </div>
+                <input 
+                  type="checkbox"
+                  checked={config?.notifyEmail ?? false}
+                  disabled={!isAdmin}
+                  onChange={(e) => handleToggle('notifyEmail', e.target.checked)}
+                  className="w-9 h-5 bg-muted rounded-full appearance-none checked:bg-primary relative before:absolute before:h-4 before:w-4 before:bg-white before:rounded-full before:top-0.5 before:left-0.5 checked:before:translate-x-4 before:transition-all cursor-pointer border border-border"
+                />
+              </div>
+
+              <div className="border-t border-border/40 pt-4 space-y-3">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Trigger Notifications For:</p>
+
+                <div className="flex items-center justify-between p-2 rounded-xl bg-card">
+                  <span className="text-xs font-semibold text-foreground">New Compliance Issue Raised</span>
+                  <input 
+                    type="checkbox"
+                    checked={config?.notifyNewCompliance ?? true}
+                    disabled={!isAdmin}
+                    onChange={(e) => handleToggle('notifyNewCompliance', e.target.checked)}
+                    className="w-8 h-4.5 bg-muted rounded-full appearance-none checked:bg-primary relative before:absolute before:h-3.5 before:w-3.5 before:bg-white before:rounded-full before:top-0.5 before:left-0.5 checked:before:translate-x-3.5 before:transition-all cursor-pointer border border-border"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded-xl bg-card">
+                  <span className="text-xs font-semibold text-foreground">CSR / Challenge Approvals</span>
+                  <input 
+                    type="checkbox"
+                    checked={config?.notifyApprovalDecisions ?? true}
+                    disabled={!isAdmin}
+                    onChange={(e) => handleToggle('notifyApprovalDecisions', e.target.checked)}
+                    className="w-8 h-4.5 bg-muted rounded-full appearance-none checked:bg-primary relative before:absolute before:h-3.5 before:w-3.5 before:bg-white before:rounded-full before:top-0.5 before:left-0.5 checked:before:translate-x-3.5 before:transition-all cursor-pointer border border-border"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded-xl bg-card">
+                  <span className="text-xs font-semibold text-foreground">Policy Acknowledgement Reminders</span>
+                  <input 
+                    type="checkbox"
+                    checked={config?.notifyPolicyReminders ?? true}
+                    disabled={!isAdmin}
+                    onChange={(e) => handleToggle('notifyPolicyReminders', e.target.checked)}
+                    className="w-8 h-4.5 bg-muted rounded-full appearance-none checked:bg-primary relative before:absolute before:h-3.5 before:w-3.5 before:bg-white before:rounded-full before:top-0.5 before:left-0.5 checked:before:translate-x-3.5 before:transition-all cursor-pointer border border-border"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded-xl bg-card">
+                  <span className="text-xs font-semibold text-foreground">Badge Unlock Alerts</span>
+                  <input 
+                    type="checkbox"
+                    checked={config?.notifyBadgeUnlocks ?? true}
+                    disabled={!isAdmin}
+                    onChange={(e) => handleToggle('notifyBadgeUnlocks', e.target.checked)}
+                    className="w-8 h-4.5 bg-muted rounded-full appearance-none checked:bg-primary relative before:absolute before:h-3.5 before:w-3.5 before:bg-white before:rounded-full before:top-0.5 before:left-0.5 checked:before:translate-x-3.5 before:transition-all cursor-pointer border border-border"
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>

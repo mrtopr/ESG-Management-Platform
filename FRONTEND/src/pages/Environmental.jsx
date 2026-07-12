@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { 
   useCarbonTransactions, useCreateCarbonTransaction, 
-  useEmissionFactors, useGoals, useDepartments 
+  useEmissionFactors, useGoals, useDepartments, useConfig 
 } from '../api/queries';
 import { useAuth } from '../hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/Card';
@@ -26,12 +26,16 @@ export const Environmental = () => {
   // Mutations
   const createTx = useCreateCarbonTransaction();
 
+  const { data: config } = useConfig();
+
   // Component State
   const [modalOpen, setModalOpen] = useState(false);
   const [sourceType, setSourceType] = useState('Purchase');
   const [sourceId, setSourceId] = useState('');
   const [selectedFactorId, setSelectedFactorId] = useState('');
   const [deptId, setDeptId] = useState(user?.departmentId || '');
+  const [quantity, setQuantity] = useState('');
+  const [manualCo2, setManualCo2] = useState('');
 
   // Calculate stats
   const totalEmissions = transactions.reduce((sum, tx) => sum + tx.co2Amount, 0);
@@ -48,15 +52,28 @@ export const Environmental = () => {
     e.preventDefault();
     if (!selectedFactorId || !sourceId || !deptId) return;
 
-    createTx.mutate({
+    const autoCalc = config?.autoEmissionCalc ?? true;
+    const payload = {
       departmentId: deptId,
       emissionFactorId: selectedFactorId,
       sourceType,
       sourceId,
-    }, {
+    };
+
+    if (autoCalc) {
+      if (!quantity) return;
+      payload.quantity = Number(quantity);
+    } else {
+      if (!manualCo2) return;
+      payload.co2Amount = Number(manualCo2);
+    }
+
+    createTx.mutate(payload, {
       onSuccess: () => {
         setModalOpen(false);
         setSourceId('');
+        setQuantity('');
+        setManualCo2('');
       }
     });
   };
@@ -298,6 +315,38 @@ export const Environmental = () => {
               ))}
             </select>
           </div>
+
+          {config?.autoEmissionCalc ?? true ? (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                Activity Quantity {selectedFactorId && `(${factors.find(f => f.id === selectedFactorId)?.unit.split('/')[1]?.trim() || ''})`}
+              </label>
+              <input 
+                type="number"
+                step="any"
+                placeholder="e.g. 1500"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                required
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                Manual CO2 Amount (kg CO2e)
+              </label>
+              <input 
+                type="number"
+                step="any"
+                placeholder="e.g. 350"
+                value={manualCo2}
+                onChange={(e) => setManualCo2(e.target.value)}
+                className="w-full bg-muted border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                required
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Reporting Department</label>

@@ -11,7 +11,8 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/Card';
 import { Dialog } from '../components/Dialog';
-import { db } from '../api/client';
+
+
 
 export const Gamification = () => {
   const { user, isAdmin, isDeptHead } = useAuth();
@@ -49,9 +50,9 @@ export const Gamification = () => {
   const userParticipations = participations.filter(p => p.employeeId === user?.id);
   const userBadges = employeeBadges.filter(eb => eb.employeeId === user?.id);
 
-  const currentPoints = db.pointsTransactions
-    .filter(tx => tx.employeeId === user?.id)
-    .reduce((sum, tx) => sum + tx.amount, 0);
+  // currentPoints: derived from user.points (set by getCurrentUser mock/API)
+  // This is reactive — updates whenever currentUser query is refreshed
+  const currentPoints = user?.points ?? 0;
 
   const handleJoinChallenge = (challengeId) => {
     joinChallenge.mutate(challengeId);

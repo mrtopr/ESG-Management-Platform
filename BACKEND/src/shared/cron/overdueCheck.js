@@ -7,7 +7,10 @@ cron.schedule('0 6 * * *', async () => {
   try {
     logger.info('Running daily overdue compliance check...');
     const overdue = await prisma.complianceIssue.updateMany({
-      where: { status: 'OPEN', dueDate: { lt: new Date() } },
+      where: { 
+        status: { in: ['OPEN', 'IN_PROGRESS'] }, 
+        dueDate: { lt: new Date() } 
+      },
       data: { status: 'OVERDUE' },
     });
     

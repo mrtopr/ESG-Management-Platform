@@ -29,10 +29,11 @@ router.get('/employee-badges', getEmployeeBadges);
 // Challenges
 router.get('/challenges', getChallenges);
 router.post('/challenges', requireRole(['ESG_ADMIN']), createChallenge);
-router.post('/challenges/:challengeId/join', participateInChallenge);
+// Static participation routes MUST come before dynamic :challengeId to avoid param collision
 router.get('/challenges/participations', getChallengeParticipations);
 router.patch('/challenges/participations/:id', updateChallengeProgress);
 router.post('/challenges/participations/:id/approve', requireRole(['ESG_ADMIN', 'DEPT_HEAD']), approveChallengeParticipation);
 router.post('/challenges/participations/:id/reject', requireRole(['ESG_ADMIN', 'DEPT_HEAD']), rejectChallengeParticipation);
+router.post('/challenges/:challengeId/join', participateInChallenge);
 
 export default router;
