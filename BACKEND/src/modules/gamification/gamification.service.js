@@ -1,5 +1,6 @@
 import prisma from '../../config/db.js';
-import { Prisma } from '@prisma/client';
+import prismaClientPkg from '@prisma/client';
+const { Prisma } = prismaClientPkg;
 import { AppError } from '../../shared/errors/AppError.js';
 import { eventBus } from '../../shared/events/eventBus.js';
 

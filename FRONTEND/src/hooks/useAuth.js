@@ -64,6 +64,7 @@ export const useAuth = () => {
 
   const logout = () => {
     localStorage.removeItem('ecosphere_user_id');
+    localStorage.removeItem('ecosphere_token');
     queryClient.setQueryData(['currentUser'], null);
     queryClient.invalidateQueries();
   };

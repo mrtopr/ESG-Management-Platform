@@ -23,7 +23,7 @@ app.use(cors({
     if (!origin || env.NODE_ENV === 'development') {
       callback(null, true);
     } else {
-      callback(null, env.FRONTEND_URL);
+      callback(null, origin === env.FRONTEND_URL);
     }
   },
   credentials: true

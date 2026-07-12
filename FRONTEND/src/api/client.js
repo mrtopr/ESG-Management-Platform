@@ -376,8 +376,8 @@ export const mockHandlers = {
       const factor = factors.find(ef => ef.id === data.emissionFactorId);
       if (!factor) throw new Error('Emission factor not found');
 
-      const quantity = 500; 
-      const calculatedCo2 = quantity * factor.factorValue;
+      const quantity = data.quantity || 500;
+      const calculatedCo2 = data.co2Amount || (quantity * factor.factorValue);
 
       const txs = db.carbonTransactions;
       const newTx = {

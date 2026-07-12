@@ -45,7 +45,8 @@ export const Login = () => {
       name: regName,
       email: regEmail,
       role: regRole,
-      departmentId: regDept
+      departmentId: regDept,
+      password: regPassword
     }, {
       onSuccess: () => {
         toast(`Account registered successfully for ${regName}`, 'success');
