@@ -1,13 +1,378 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════ ENUMS ═══════════════════
+enum Role {
+  EMPLOYEE
+  DEPT_HEAD
+  ESG_ADMIN
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ChallengeStatus {
+  DRAFT
+  ACTIVE
+  UNDER_REVIEW
+  COMPLETED
+  ARCHIVED
+}
+
+enum CategoryType {
+  CSR_ACTIVITY
+  CHALLENGE
+}
+
+enum ComplianceSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ComplianceStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  OVERDUE
+}
+
+enum SourceType {
+  PURCHASE
+  MANUFACTURING
+  EXPENSE
+  FLEET
+  MANUAL
+}
+
+enum PointsSourceType {
+  CSR
+  CHALLENGE
+  REDEMPTION
+  ADJUSTMENT
+}
+
+// ═══════════════════ MASTER DATA ═══════════════════
+model Department {
+  id            String       @id @default(uuid())
+  name          String
+  code          String       @unique
+  headId        String?      @unique
+  head          Employee?    @relation("DeptHead", fields: [headId], references: [id])
+  parentId      String?
+  parent        Department?  @relation("DeptHierarchy", fields: [parentId], references: [id])
+  children      Department[] @relation("DeptHierarchy")
+  employeeCount Int          @default(0)
+  status        String       @default("active")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  employees          Employee[]          @relation("EmployeeDept")
+  carbonTransactions CarbonTransaction[]
+  csrActivities      CsrActivity[]
+  audits             Audit[]
+  scores             DepartmentScore[]
+
+  @@index([parentId])
+  @@index([status])
+}
+
+model Employee {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(EMPLOYEE)
+  departmentId String
+  department   Department @relation("EmployeeDept", fields: [departmentId], references: [id])
+  status       String   @default("active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  headOfDept         Department?              @relation("DeptHead")
+  participations     EmployeeParticipation[]
+  challengeEntries   ChallengeParticipation[]
+  pointsTransactions PointsTransaction[]
+  redemptions        Redemption[]
+  badges             EmployeeBadge[]
+  acknowledgements   PolicyAcknowledgement[]
+  ownedIssues        ComplianceIssue[]        @relation("IssueOwner")
+
+  @@index([departmentId])
+  @@index([role])
+}
+
+model Category {
+  id     String       @id @default(uuid())
+  name   String
+  type   CategoryType
+  status String       @default("active")
+
+  csrActivities CsrActivity[]
+  challenges    Challenge[]
+
+  @@index([type, status])
+}
+
+model EmissionFactor {
+  id          String @id @default(uuid())
+  activity    String
+  unit        String
+  factorValue Float
+  status      String @default("active")
+
+  transactions CarbonTransaction[]
+}
+
+model ProductEsgProfile {
+  id              String  @id @default(uuid())
+  productId       String  @unique
+  carbonFootprint Float?
+  notes           String?
+}
+
+model EnvironmentalGoal {
+  id           String   @id @default(uuid())
+  title        String
+  departmentId String?
+  targetValue  Float
+  currentValue Float    @default(0)
+  unit         String
+  periodStart  DateTime
+  periodEnd    DateTime
+  status       String   @default("active")
+
+  @@index([departmentId, status])
+}
+
+model EsgPolicy {
+  id      String @id @default(uuid())
+  title   String
+  content String
+  version Int    @default(1)
+  status  String @default("active")
+
+  acknowledgements PolicyAcknowledgement[]
+}
+
+model Badge {
+  id          String @id @default(uuid())
+  name        String
+  description String
+  unlockRule  Json   // e.g. { "type": "xp_threshold", "value": 500 }
+  icon        String?
+
+  employeeBadges EmployeeBadge[]
+}
+
+model Reward {
+  id             String @id @default(uuid())
+  name           String
+  description    String
+  pointsRequired Int
+  stock          Int
+  status         String @default("active")
+
+  redemptions Redemption[]
+}
+
+// ═══════════════════ TRANSACTIONAL DATA ═══════════════════
+model CarbonTransaction {
+  id               String     @id @default(uuid())
+  departmentId     String
+  department       Department @relation(fields: [departmentId], references: [id])
+  emissionFactorId String
+  emissionFactor   EmissionFactor @relation(fields: [emissionFactorId], references: [id])
+  sourceType       SourceType
+  sourceId         String?
+  quantity         Float      // e.g. litres of diesel
+  co2Amount        Float      // computed: quantity * factorValue
+  date             DateTime   @default(now())
+  createdAt        DateTime   @default(now())
+
+  // Critical for scoring queries: "sum CO2 for dept X between date range"
+  @@index([departmentId, date])
+  @@index([sourceType, sourceId])
+}
+
+model CsrActivity {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  categoryId   String
+  category     Category @relation(fields: [categoryId], references: [id])
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  date         DateTime
+  status       String   @default("active")
+
+  participations EmployeeParticipation[]
+
+  @@index([departmentId, date])
+}
+
+model EmployeeParticipation {
+  id             String         @id @default(uuid())
+  employeeId     String
+  employee       Employee       @relation(fields: [employeeId], references: [id])
+  activityId     String
+  activity       CsrActivity    @relation(fields: [activityId], references: [id])
+  proofUrl       String?
+  approvalStatus ApprovalStatus @default(PENDING)
+  pointsEarned   Int            @default(0)
+  completionDate DateTime?
+  createdAt      DateTime       @default(now())
+
+  // Prevents duplicate submissions for the same activity
+  @@unique([employeeId, activityId])
+  @@index([approvalStatus])
+  @@index([employeeId, completionDate])
+}
+
+model Challenge {
+  id               String          @id @default(uuid())
+  title            String
+  categoryId       String
+  category         Category        @relation(fields: [categoryId], references: [id])
+  description      String?
+  xp               Int
+  difficulty       String
+  evidenceRequired Boolean         @default(false)
+  deadline         DateTime
+  status           ChallengeStatus @default(DRAFT)
+
+  participations ChallengeParticipation[]
+
+  @@index([status, deadline])
+}
+
+model ChallengeParticipation {
+  id             String         @id @default(uuid())
+  challengeId    String
+  challenge      Challenge      @relation(fields: [challengeId], references: [id])
+  employeeId     String
+  employee       Employee       @relation(fields: [employeeId], references: [id])
+  progress       Int            @default(0)
+  proofUrl       String?
+  approvalStatus ApprovalStatus @default(PENDING)
+  xpAwarded      Int            @default(0)
+  createdAt      DateTime       @default(now())
+
+  @@unique([challengeId, employeeId])
+  @@index([approvalStatus])
+}
+
+model PolicyAcknowledgement {
+  id             String    @id @default(uuid())
+  employeeId     String
+  employee       Employee  @relation(fields: [employeeId], references: [id])
+  policyId       String
+  policy         EsgPolicy @relation(fields: [policyId], references: [id])
+  acknowledgedAt DateTime  @default(now())
+
+  @@unique([employeeId, policyId])
+}
+
+model Audit {
+  id           String   @id @default(uuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  date         DateTime
+  auditor      String
+  status       String   @default("scheduled")
+
+  issues ComplianceIssue[]
+
+  @@index([departmentId, date])
+}
+
+model ComplianceIssue {
+  id          String             @id @default(uuid())
+  auditId     String
+  audit       Audit              @relation(fields: [auditId], references: [id])
+  severity    ComplianceSeverity
+  description String
+  ownerId     String
+  owner       Employee           @relation("IssueOwner", fields: [ownerId], references: [id])
+  dueDate     DateTime
+  status      ComplianceStatus   @default(OPEN)
+  createdAt   DateTime           @default(now())
+
+  // Critical for the daily overdue-check cron job
+  @@index([status, dueDate])
+  @@index([ownerId])
+}
+
+model DepartmentScore {
+  id                 String     @id @default(uuid())
+  departmentId       String
+  department         Department @relation(fields: [departmentId], references: [id])
+  environmentalScore Float
+  socialScore        Float
+  governanceScore    Float
+  totalScore         Float
+  period             String     // e.g. "2026-Q3" or "2026-07"
+  calculatedAt       DateTime   @default(now())
+
+  // One score row per dept per period — recalculating overwrites, doesn't duplicate
+  @@unique([departmentId, period])
+  @@index([period])
+}
+
+// ═══════════════════ GAMIFICATION LEDGER ═══════════════════
+model PointsTransaction {
+  id         String           @id @default(uuid())
+  employeeId String
+  employee   Employee         @relation(fields: [employeeId], references: [id])
+  sourceType PointsSourceType
+  sourceId   String?
+  amount     Int              // positive = earn, negative = spend
+  createdAt  DateTime         @default(now())
+
+  // Critical for computing "current balance" fast: SUM(amount) WHERE employeeId = X
+  @@index([employeeId, createdAt])
+}
+
+model Redemption {
+  id          String   @id @default(uuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  rewardId    String
+  reward      Reward   @relation(fields: [rewardId], references: [id])
+  pointsSpent Int
+  createdAt   DateTime @default(now())
+
+  @@index([employeeId])
+}
+
+model EmployeeBadge {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  badgeId    String
+  badge      Badge    @relation(fields: [badgeId], references: [id])
+  awardedAt  DateTime @default(now())
+
+  @@unique([employeeId, badgeId])
+}
+
+// ═══════════════════ CONFIG (single-tenant, one row) ═══════════════════
+model EsgConfig {
+  id               String  @id @default(uuid())
+  envWeight        Float   @default(0.4)
+  socialWeight     Float   @default(0.3)
+  govWeight        Float   @default(0.3)
+  autoEmissionCalc Boolean @default(false)
+  evidenceRequired Boolean @default(false)
+  badgeAutoAward   Boolean @default(true)
 }
