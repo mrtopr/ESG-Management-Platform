@@ -9,4 +9,4 @@ By connecting operational data, employee participation, and compliance activitie
 - **Environmental**: Tracks carbon emissions automatically using emission factors linked to ERP operations (purchases, manufacturing, travel, logistics), and monitors sustainability targets.
 - **Social**: Measures employee engagement in CSR activities, training programs, and diversity metrics, encouraging involvement through gamified challenges.
 - **Governance**: Manages corporate policies, tracks audits, and handles compliance issues with assigned ownership and alerts.
-- **Gamification**: Incentivizes sustainable behaviors using challenges, XP, badges, and a rewards redemption system.
+- **Gamification**: Ai recognised performance testing, Incentivizes sustainable behaviors using challenges, XP, badges, and a rewards redemption system.
