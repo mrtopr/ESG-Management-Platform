@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { login } from './auth.controller.js';
+import { login, getMe } from './auth.controller.js';
 import { validate } from '../../shared/middleware/validate.middleware.js';
+import { requireAuth } from '../../shared/middleware/auth.middleware.js';
 import { z } from 'zod';
 
 const router = Router();
@@ -11,5 +12,6 @@ const loginSchema = z.object({
 });
 
 router.post('/login', validate(loginSchema), login);
+router.get('/me', requireAuth, getMe);
 
 export default router;

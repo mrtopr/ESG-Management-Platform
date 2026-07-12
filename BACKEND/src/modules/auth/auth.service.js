@@ -18,3 +18,42 @@ export async function login(email, password) {
     employee: { id: employee.id, name: employee.name, role: employee.role } 
   };
 }
+
+export async function getEmployeeProfile(employeeId) {
+  const employee = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    include: {
+      department: true,
+      badges: {
+        include: {
+          badge: true
+        }
+      }
+    }
+  });
+  if (!employee) throw new AppError(404, 'Employee not found');
+  
+  const pointsRes = await prisma.pointsTransaction.aggregate({
+    _sum: { amount: true },
+    where: { employeeId },
+  });
+  const points = pointsRes._sum.amount || 0;
+  
+  const xpRes = await prisma.pointsTransaction.aggregate({
+    _sum: { amount: true },
+    where: { employeeId, amount: { gt: 0 } },
+  });
+  const xp = xpRes._sum.amount || 0;
+  
+  return {
+    id: employee.id,
+    name: employee.name,
+    email: employee.email,
+    role: employee.role,
+    departmentId: employee.departmentId,
+    departmentName: employee.department.name,
+    xp,
+    points,
+    badges: employee.badges.map(eb => eb.badge)
+  };
+}
