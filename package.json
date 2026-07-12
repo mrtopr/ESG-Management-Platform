@@ -1,0 +1,20 @@
+{
+  "name": "esg-management-platform",
+  "version": "1.0.0",
+  "description": "Unified entry point for the ESG Management Platform",
+  "main": "index.js",
+  "scripts": {
+    "install:all": "npm install --prefix BACKEND && npm install --prefix FRONTEND",
+    "dev:backend": "npm run dev --prefix BACKEND",
+    "dev:frontend": "npm run dev --prefix FRONTEND",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "db:generate": "npx prisma generate --schema=BACKEND/prisma/schema.prisma",
+    "db:push": "npx prisma db push --schema=BACKEND/prisma/schema.prisma",
+    "db:seed": "node BACKEND/prisma/seed.js"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "author": "",
+  "license": "ISC"
+}

@@ -18,7 +18,16 @@ const app = express();
 
 // Security and middleware
 app.use(helmet());
-app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      callback(null, env.FRONTEND_URL);
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(pinoHttp());
 

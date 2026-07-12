@@ -8,15 +8,6 @@ export const api = axios.create({
   },
 });
 
-// Axios Request Interceptor to inject JWT token automatically
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('ecosphere_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
 // ─────────────── MOCK DATABASE SYSTEM ───────────────
 
 const KEY_PREFIX = 'ecosphere_db_';
@@ -297,21 +288,28 @@ const checkBadgeUnlocks = (employeeId) => {
   });
 };
 
-// Simple mock handler structure to map API calls with hybrid fallbacks
+// Request Interceptor to send JWT token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('ecosphere_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Simple mock handler structure mapped to backend REST API or fallback to localStorage
 export const mockHandlers = {
   // Auth
-  login: async (email, password = 'password123') => {
-    await latency();
+  login: async (email, password = 'pass123') => {
     try {
-      const response = await api.post('/auth/login', { email, password });
-      const { token, employee } = response.data.data;
+      const res = await api.post('/auth/login', { email, password });
+      const { token, employee } = res.data.data;
       localStorage.setItem('ecosphere_token', token);
-      localStorage.setItem('ecosphere_user_id', employee.id);
       setSessionUser(employee.id);
-      const profile = await mockHandlers.getCurrentUser();
-      return { token, user: profile };
+      return { token, user: employee };
     } catch (err) {
-      console.warn('Backend login failed, falling back to mock storage:', err);
+      console.warn("Login endpoint failed, using mock auth", err);
+      await latency();
       const user = db.employees.find(e => e.email === email);
       if (!user) throw new Error('Invalid email or password');
       setSessionUser(user.id);
@@ -320,12 +318,12 @@ export const mockHandlers = {
   },
 
   getCurrentUser: async () => {
-    await latency();
     try {
-      const response = await api.get('/auth/me');
-      return response.data.data;
+      const res = await api.get('/auth/me');
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend getCurrentUser failed, falling back to mock storage:', err);
+      console.warn("getCurrentUser endpoint failed, using mock profile", err);
+      await latency();
       const user = getSessionUser();
       const pts = db.pointsTransactions
         .filter(tx => tx.employeeId === user.id)
@@ -350,19 +348,12 @@ export const mockHandlers = {
   },
 
   getCarbonTransactions: async () => {
-    await latency();
     try {
-      const response = await api.get('/environmental/carbon');
-      const txs = response.data.data;
-      const depts = db.departments;
-      const factors = db.emissionFactors;
-      return txs.map(tx => ({
-        ...tx,
-        department: depts.find(d => d.id === tx.departmentId),
-        emissionFactor: factors.find(ef => ef.id === tx.emissionFactorId),
-      }));
+      const res = await api.get('/environmental/carbon');
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend getCarbonTransactions failed, falling back to mock storage:', err);
+      console.warn("getCarbonTransactions endpoint failed, using mock", err);
+      await latency();
       const txs = db.carbonTransactions;
       const depts = db.departments;
       const factors = db.emissionFactors;
@@ -375,17 +366,12 @@ export const mockHandlers = {
   },
 
   createCarbonTransaction: async (data) => {
-    await latency();
     try {
-      const response = await api.post('/environmental/carbon', {
-        departmentId: data.departmentId,
-        emissionFactorId: data.emissionFactorId,
-        quantity: parseFloat(data.quantity || 500),
-        date: new Date().toISOString()
-      });
-      return response.data.data;
+      const res = await api.post('/environmental/carbon', data);
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend createCarbonTransaction failed, falling back to mock storage:', err);
+      console.warn("createCarbonTransaction endpoint failed, using mock", err);
+      await latency();
       const factors = db.emissionFactors;
       const factor = factors.find(ef => ef.id === data.emissionFactorId);
       if (!factor) throw new Error('Emission factor not found');
@@ -430,7 +416,7 @@ export const mockHandlers = {
     return newGoal;
   },
 
-  // Social (CSR)
+  // Social
   getCSRActivities: async () => {
     await latency();
     const acts = db.csrActivities;
@@ -487,12 +473,12 @@ export const mockHandlers = {
   },
 
   approveParticipation: async (id) => {
-    await latency();
     try {
-      const response = await api.post(`/social/participations/${id}/approve`);
-      return response.data.data;
+      const res = await api.post(`/social/participations/${id}/approve`);
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend approveParticipation failed, falling back to mock storage:', err);
+      console.warn("approveParticipation failed, using mock", err);
+      await latency();
       const prts = db.participations;
       const idx = prts.findIndex(p => p.id === id);
       if (idx === -1) throw new Error('Participation not found');
@@ -521,17 +507,12 @@ export const mockHandlers = {
 
   // Governance
   getPolicies: async () => {
-    await latency();
     try {
-      const response = await api.get('/governance/policies');
-      const pols = response.data.data;
-      const acks = db.policyAcknowledgements;
-      return pols.map(p => ({
-        ...p,
-        acknowledgements: acks.filter(a => a.policyId === p.id)
-      }));
+      const res = await api.get('/governance/policies');
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend getPolicies failed, falling back to mock storage:', err);
+      console.warn("getPolicies failed, using mock", err);
+      await latency();
       const pols = db.policies;
       const acks = db.policyAcknowledgements;
       return pols.map(p => ({
@@ -542,12 +523,12 @@ export const mockHandlers = {
   },
 
   createPolicy: async (data) => {
-    await latency();
     try {
-      const response = await api.post('/governance/policies', data);
-      return response.data.data;
+      const res = await api.post('/governance/policies', data);
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend createPolicy failed, falling back to mock storage:', err);
+      console.warn("createPolicy failed, using mock", err);
+      await latency();
       const pols = db.policies;
       const newPol = { ...data, id: `pol-${Date.now()}` };
       pols.push(newPol);
@@ -637,17 +618,12 @@ export const mockHandlers = {
 
   // Gamification
   getChallenges: async () => {
-    await latency();
     try {
-      const response = await api.get('/gamification/challenges');
-      const chs = response.data.data;
-      const cats = db.categories;
-      return chs.map(ch => ({
-        ...ch,
-        category: cats.find(c => c.id === ch.categoryId)
-      }));
+      const res = await api.get('/gamification/challenges');
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend getChallenges failed, falling back to mock storage:', err);
+      console.warn("getChallenges failed, using mock", err);
+      await latency();
       const chs = db.challenges;
       const cats = db.categories;
       return chs.map(ch => ({
@@ -658,12 +634,12 @@ export const mockHandlers = {
   },
 
   createChallenge: async (data) => {
-    await latency();
     try {
-      const response = await api.post('/gamification/challenges', data);
-      return response.data.data;
+      const res = await api.post('/gamification/challenges', data);
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend createChallenge failed, falling back to mock storage:', err);
+      console.warn("createChallenge failed, using mock", err);
+      await latency();
       const chs = db.challenges;
       const newCh = { ...data, id: `chg-${Date.now()}` };
       chs.push(newCh);
@@ -673,19 +649,12 @@ export const mockHandlers = {
   },
 
   getChallengeParticipations: async () => {
-    await latency();
     try {
-      const response = await api.get('/gamification/challenges/participations');
-      const prts = response.data.data;
-      const chs = db.challenges;
-      const emps = db.employees;
-      return prts.map(p => ({
-        ...p,
-        challenge: chs.find(c => c.id === p.challengeId),
-        employee: emps.find(e => e.id === p.employeeId)
-      }));
+      const res = await api.get('/gamification/challenges/participations');
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend getChallengeParticipations failed, falling back to mock storage:', err);
+      console.warn("getChallengeParticipations failed, using mock", err);
+      await latency();
       const prts = db.challengeParticipations;
       const chs = db.challenges;
       const emps = db.employees;
@@ -698,12 +667,12 @@ export const mockHandlers = {
   },
 
   participateInChallenge: async (challengeId) => {
-    await latency();
     try {
-      const response = await api.post(`/gamification/challenges/${challengeId}/join`);
-      return response.data.data;
+      const res = await api.post(`/gamification/challenges/${challengeId}/join`);
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend participateInChallenge failed, falling back to mock storage:', err);
+      console.warn("participateInChallenge failed, using mock", err);
+      await latency();
       const currentUser = getSessionUser();
       const prts = db.challengeParticipations;
 
@@ -727,12 +696,12 @@ export const mockHandlers = {
   },
 
   updateChallengeProgress: async (participationId, progress, proofUrl) => {
-    await latency();
     try {
-      const response = await api.patch(`/gamification/challenges/participations/${participationId}`, { progress, proofUrl });
-      return response.data.data;
+      const res = await api.patch(`/gamification/challenges/participations/${participationId}`, { progress, proofUrl });
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend updateChallengeProgress failed, falling back to mock storage:', err);
+      console.warn("updateChallengeProgress failed, using mock", err);
+      await latency();
       const prts = db.challengeParticipations;
       const idx = prts.findIndex(p => p.id === participationId);
       if (idx === -1) throw new Error('Challenge participation not found');
@@ -760,12 +729,12 @@ export const mockHandlers = {
   },
 
   approveChallengeParticipation: async (id) => {
-    await latency();
     try {
-      const response = await api.post(`/gamification/challenges/participations/${id}/approve`);
-      return response.data.data;
+      const res = await api.post(`/gamification/challenges/participations/${id}/approve`);
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend approveChallengeParticipation failed, falling back to mock storage:', err);
+      console.warn("approveChallengeParticipation failed, using mock", err);
+      await latency();
       const prts = db.challengeParticipations;
       const idx = prts.findIndex(p => p.id === id);
       if (idx === -1) throw new Error('Participation not found');
@@ -785,12 +754,12 @@ export const mockHandlers = {
   },
 
   rejectChallengeParticipation: async (id) => {
-    await latency();
     try {
-      const response = await api.post(`/gamification/challenges/participations/${id}/reject`);
-      return response.data.data;
+      const res = await api.post(`/gamification/challenges/participations/${id}/reject`);
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend rejectChallengeParticipation failed, falling back to mock storage:', err);
+      console.warn("rejectChallengeParticipation failed, using mock", err);
+      await latency();
       const prts = db.challengeParticipations;
       const idx = prts.findIndex(p => p.id === id);
       if (idx === -1) throw new Error('Participation not found');
@@ -802,23 +771,23 @@ export const mockHandlers = {
   },
 
   getBadges: async () => {
-    await latency();
     try {
-      const response = await api.get('/gamification/badges');
-      return response.data.data;
+      const res = await api.get('/gamification/badges');
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend getBadges failed, falling back to mock storage:', err);
+      console.warn("getBadges failed, using mock", err);
+      await latency();
       return db.badges;
     }
   },
 
   getEmployeeBadges: async () => {
-    await latency();
     try {
-      const response = await api.get('/gamification/employee-badges');
-      return response.data.data;
+      const res = await api.get('/gamification/employee-badges');
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend getEmployeeBadges failed, falling back to mock storage:', err);
+      console.warn("getEmployeeBadges failed, using mock", err);
+      await latency();
       const ebs = db.employeeBadges;
       const badges = db.badges;
       return ebs.map(eb => ({
@@ -829,12 +798,12 @@ export const mockHandlers = {
   },
 
   getLeaderboard: async () => {
-    await latency();
     try {
-      const response = await api.get('/gamification/leaderboard');
-      return response.data.data;
+      const res = await api.get('/gamification/leaderboard');
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend getLeaderboard failed, falling back to mock storage:', err);
+      console.warn("getLeaderboard failed, using mock", err);
+      await latency();
       const emps = [...db.employees];
       const depts = db.departments;
       
@@ -850,23 +819,23 @@ export const mockHandlers = {
   },
 
   getRewards: async () => {
-    await latency();
     try {
-      const response = await api.get('/gamification/rewards');
-      return response.data.data;
+      const res = await api.get('/gamification/rewards');
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend getRewards failed, falling back to mock storage:', err);
+      console.warn("getRewards failed, using mock", err);
+      await latency();
       return db.rewards;
     }
   },
 
   createReward: async (data) => {
-    await latency();
     try {
-      const response = await api.post('/gamification/rewards', data);
-      return response.data.data;
+      const res = await api.post('/gamification/rewards', data);
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend createReward failed, falling back to mock storage:', err);
+      console.warn("createReward failed, using mock", err);
+      await latency();
       const rewards = db.rewards;
       const newReward = { ...data, id: `rwd-${Date.now()}` };
       rewards.push(newReward);
@@ -876,12 +845,12 @@ export const mockHandlers = {
   },
 
   redeemReward: async (id) => {
-    await latency();
     try {
-      const response = await api.post(`/gamification/rewards/${id}/redeem`);
-      return response.data.data;
+      const res = await api.post(`/gamification/rewards/${id}/redeem`);
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend redeemReward failed, falling back to mock storage:', err);
+      console.warn("redeemReward failed, using mock", err);
+      await latency();
       const currentUser = getSessionUser();
       const rewards = db.rewards;
       const rIdx = rewards.findIndex(r => r.id === id);
@@ -952,23 +921,23 @@ export const mockHandlers = {
   },
 
   getDepartments: async () => {
-    await latency();
     try {
-      const response = await api.get('/departments');
-      return response.data.data;
+      const res = await api.get('/departments');
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend getDepartments failed, falling back to mock storage:', err);
+      console.warn("getDepartments failed, using mock", err);
+      await latency();
       return db.departments;
     }
   },
 
   createDepartment: async (data) => {
-    await latency();
     try {
-      const response = await api.post('/departments', data);
-      return response.data.data;
+      const res = await api.post('/departments', data);
+      return res.data.data;
     } catch (err) {
-      console.warn('Backend createDepartment failed, falling back to mock storage:', err);
+      console.warn("createDepartment failed, using mock", err);
+      await latency();
       const depts = db.departments;
       const newDept = {
         ...data,
