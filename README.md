@@ -52,17 +52,235 @@ The database is built on a clean relational schema modeled via Prisma:
 
 ```mermaid
 erDiagram
-    Department ||--o{ Employee : has
-    Department ||--o{ CarbonTransaction : owns
-    DepartmentScore }|--|| Department : computes
-    Employee ||--o{ EmployeeParticipation : volunteers
-    EmployeeParticipation }|--|| CsrActivity : references
-    Employee ||--o{ ChallengeParticipation : joins
-    ChallengeParticipation }|--|| Challenge : references
-    Employee ||--o{ PointsTransaction : earns
-    Employee ||--o{ EmployeeBadge : unlocks
-    Employee ||--o{ PolicyAcknowledgement : signs
-    ComplianceIssue }|--|| Audit : arises-from
+    %% Master Data
+    DEPARTMENT {
+        String id PK
+        String name
+        String code UK
+        String headId FK "Unique"
+        String parentId FK
+        Int employeeCount
+        String status
+    }
+    
+    EMPLOYEE {
+        String id PK
+        String name
+        String email UK
+        String passwordHash
+        Enum role "EMPLOYEE, DEPT_HEAD, ESG_ADMIN"
+        String departmentId FK
+        String status
+    }
+
+    CATEGORY {
+        String id PK
+        String name
+        Enum type "CSR_ACTIVITY, CHALLENGE"
+        String status
+    }
+
+    EMISSION_FACTOR {
+        String id PK
+        String activity
+        String unit
+        Float factorValue
+        String status
+    }
+
+    ESG_POLICY {
+        String id PK
+        String title
+        String content
+        Int version
+        String status
+    }
+
+    BADGE {
+        String id PK
+        String name
+        String description
+        Json unlockRule
+        String icon
+    }
+
+    REWARD {
+        String id PK
+        String name
+        String description
+        Int pointsRequired
+        Int stock
+        String status
+    }
+
+    ESG_CONFIG {
+        String id PK
+        Float envWeight
+        Float socialWeight
+        Float govWeight
+        Boolean autoEmissionCalc
+        Boolean evidenceRequired
+        Boolean badgeAutoAward
+    }
+
+    %% Environmental & Goals
+    CARBON_TRANSACTION {
+        String id PK
+        String departmentId FK
+        String emissionFactorId FK
+        Enum sourceType
+        String sourceId
+        Float quantity
+        Float co2Amount
+        DateTime date
+    }
+
+    ENVIRONMENTAL_GOAL {
+        String id PK
+        String title
+        String departmentId FK
+        Float targetValue
+        Float currentValue
+        String unit
+        DateTime periodStart
+        DateTime periodEnd
+    }
+
+    %% Social (CSR) & Challenges
+    CSR_ACTIVITY {
+        String id PK
+        String title
+        String description
+        String categoryId FK
+        String departmentId FK
+        DateTime date
+        String status
+    }
+
+    EMPLOYEE_PARTICIPATION {
+        String id PK
+        String employeeId FK
+        String activityId FK
+        Enum approvalStatus "PENDING, APPROVED, REJECTED"
+        Int pointsEarned
+        DateTime completionDate
+    }
+
+    CHALLENGE {
+        String id PK
+        String title
+        String categoryId FK
+        String description
+        Int xp
+        String difficulty
+        Boolean evidenceRequired
+        DateTime deadline
+        Enum status "DRAFT, ACTIVE, COMPLETED"
+    }
+
+    CHALLENGE_PARTICIPATION {
+        String id PK
+        String challengeId FK
+        String employeeId FK
+        Int progress
+        String proofUrl
+        Enum approvalStatus
+        Int xpAwarded
+    }
+
+    %% Governance & Audits
+    POLICY_ACKNOWLEDGEMENT {
+        String id PK
+        String employeeId FK
+        String policyId FK
+        DateTime acknowledgedAt
+    }
+
+    AUDIT {
+        String id PK
+        String departmentId FK
+        DateTime date
+        String auditor
+        String status
+    }
+
+    COMPLIANCE_ISSUE {
+        String id PK
+        String auditId FK
+        Enum severity
+        String description
+        String ownerId FK
+        DateTime dueDate
+        Enum status "OPEN, OVERDUE, RESOLVED"
+    }
+
+    %% Gamification Ledger
+    POINTS_TRANSACTION {
+        String id PK
+        String employeeId FK
+        Enum sourceType
+        String sourceId
+        Int amount
+        DateTime createdAt
+    }
+
+    REDEMPTION {
+        String id PK
+        String employeeId FK
+        String rewardId FK
+        Int pointsSpent
+        DateTime createdAt
+    }
+
+    EMPLOYEE_BADGE {
+        String id PK
+        String employeeId FK
+        String badgeId FK
+        DateTime awardedAt
+    }
+
+    %% Scoring Snapshot
+    DEPARTMENT_SCORE {
+        String id PK
+        String departmentId FK
+        Float environmentalScore
+        Float socialScore
+        Float governanceScore
+        Float totalScore
+        String period UK
+    }
+
+    %% Relationships
+    DEPARTMENT ||--o{ EMPLOYEE : "has employees"
+    DEPARTMENT |o--o| EMPLOYEE : "has head"
+    DEPARTMENT |o--o{ DEPARTMENT : "parent-child"
+    DEPARTMENT ||--o{ CARBON_TRANSACTION : "generates"
+    DEPARTMENT ||--o{ CSR_ACTIVITY : "organizes"
+    DEPARTMENT ||--o{ AUDIT : "undergoes"
+    DEPARTMENT ||--o{ DEPARTMENT_SCORE : "receives"
+    
+    EMPLOYEE ||--o{ EMPLOYEE_PARTICIPATION : "participates in CSR"
+    EMPLOYEE ||--o{ CHALLENGE_PARTICIPATION : "enters challenge"
+    EMPLOYEE ||--o{ POINTS_TRANSACTION : "earns/spends"
+    EMPLOYEE ||--o{ REDEMPTION : "redeems"
+    EMPLOYEE ||--o{ EMPLOYEE_BADGE : "earns"
+    EMPLOYEE ||--o{ POLICY_ACKNOWLEDGEMENT : "acknowledges"
+    EMPLOYEE ||--o{ COMPLIANCE_ISSUE : "owns issue"
+    
+    CATEGORY ||--o{ CSR_ACTIVITY : "categorizes"
+    CATEGORY ||--o{ CHALLENGE : "categorizes"
+    
+    EMISSION_FACTOR ||--o{ CARBON_TRANSACTION : "multiplies"
+    
+    CSR_ACTIVITY ||--o{ EMPLOYEE_PARTICIPATION : "contains"
+    CHALLENGE ||--o{ CHALLENGE_PARTICIPATION : "contains"
+    
+    ESG_POLICY ||--o{ POLICY_ACKNOWLEDGEMENT : "receives"
+    
+    AUDIT ||--o{ COMPLIANCE_ISSUE : "finds"
+    
+    REWARD ||--o{ REDEMPTION : "is redeemed"
+    BADGE ||--o{ EMPLOYEE_BADGE : "is awarded"
 ```
 
 ---
