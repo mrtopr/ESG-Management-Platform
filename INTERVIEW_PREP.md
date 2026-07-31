@@ -4,6 +4,21 @@ This is your **all-in-one interview cheat sheet**. You do not need to read the s
 
 ---
 
+## 🎤 PART 0: THE ELEVATOR PITCH (What we built)
+
+**Interview Question:** *"Tell me about a project you're proud of." or "What did you build for the hackathon?"*
+
+**How to answer (The Pitch):**
+"I built the backend for **EcoSphere**, an enterprise-grade Environmental, Social, and Governance (ESG) Management Platform. 
+Instead of companies tracking their sustainability metrics in messy spreadsheets, EcoSphere acts as a centralized database. It tracks three main pillars:
+1.  **Environmental**: It automatically calculates the exact carbon footprint of corporate activities (like fuel purchases or flights) using dynamic emission factors.
+2.  **Social (Gamification)**: It encourages employees to participate in volunteering (CSR) and green challenges. I built a gamification engine with an append-only points ledger, reward shop, and a real-time leaderboard using Window Functions.
+3.  **Governance**: It tracks compliance audits, policy acknowledgments, and automatically flags overdue issues using background cron jobs.
+
+I built the entire REST API from scratch using **Node.js, Express, PostgreSQL, and Prisma ORM**, focusing heavily on database normalization (3NF), ACID transactions to prevent race conditions in the reward shop, and strict data validation."
+
+---
+
 ## 🏗️ PART 1: SYSTEM ARCHITECTURE & NODE.JS
 
 ### 1. Why did you choose Node.js over Java, Python, or Go?
